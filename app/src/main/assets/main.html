@@ -392,11 +392,15 @@
             background: rgba(239, 68, 68, 0.1);
             color: rgb(220, 38, 38);
             font-size: 10px;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
+        }
+
+        .coffee-record-item.delete-visible .delete-record-btn {
+            display: flex;
         }
 
         .delete-record-btn:hover {
@@ -963,9 +967,6 @@
                         <div class="text-xs text-gray-500">喝了 ${coffee.count} 次 · ${getTempLabel(latestRecord.temp)} · ${getSugarLabel(latestRecord.sugar)}</div>
                     </div>
                     <div class="text-sm text-gray-400 mr-3">${Math.round((coffee.count / coffeeRecords.length) * 100)}%</div>
-                    <div class="delete-record-btn" onclick="showDeleteCoffeeNameConfirm('${coffee.name.replace(/'/g, "\\'")}')">
-                        <i class="fas fa-times"></i>
-                    </div>
                 </div>
             `;
         }).join('');
@@ -980,7 +981,7 @@
         }
 
         container.innerHTML = coffeeRecords.map((record) => `
-            <div class="coffee-record-item">
+            <div class="coffee-record-item" onclick="this.classList.toggle('delete-visible')">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1">
                         <img src="${record.photo}" class="coffee-sticker mr-3" alt="${record.name}">
