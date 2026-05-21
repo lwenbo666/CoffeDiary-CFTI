@@ -21,8 +21,8 @@ android {
         applicationId = "com.example.coffeediary"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.1.2.1"
+        versionCode = 5
+        versionName = "0.1.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
