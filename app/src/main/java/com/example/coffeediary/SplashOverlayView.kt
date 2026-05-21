@@ -22,6 +22,8 @@ class SplashOverlayView @JvmOverloads constructor(
     private val iconBitmap: Bitmap =
         BitmapFactory.decodeResource(resources, R.drawable.icon)
     private var iconScale = 100f // dp, converted to px in init
+    private var cachedIconBitmap: Bitmap? = null
+    private var cachedIconSize: Int = -1
 
     // ==================== 画笔 ====================
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -165,7 +167,6 @@ class SplashOverlayView @JvmOverloads constructor(
         val iconRadius = iconScale / 2f
 
         // --- 背景：始终全黑，不渐入 ---
-        bgPaint.alpha = 255
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
 
         // --- 环形：立即开始绘制 ---
@@ -184,12 +185,15 @@ class SplashOverlayView @JvmOverloads constructor(
         // --- 图标 Bitmap ---
         val iconAlpha = phase(0.4f, 0.7f)
         if (iconAlpha > 0f) {
-            val scaledIcon = Bitmap.createScaledBitmap(
-                iconBitmap,
-                (iconRadius * 2 * 0.8).toInt(),
-                (iconRadius * 2 * 0.8).toInt(),
-                true
-            )
+            val targetSize = (iconRadius * 2 * 0.8).toInt()
+            if (cachedIconSize != targetSize || cachedIconBitmap == null) {
+                cachedIconBitmap?.recycle()
+                cachedIconBitmap = Bitmap.createScaledBitmap(
+                    iconBitmap, targetSize, targetSize, true
+                )
+                cachedIconSize = targetSize
+            }
+            val scaledIcon = cachedIconBitmap!!
             // 圆形裁切图标
             val iconPath = Path().apply {
                 addCircle(cx, cy * 0.35f, iconRadius * 0.8f, Path.Direction.CW)

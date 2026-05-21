@@ -891,6 +891,20 @@
     let selectedTemp = 'ice'; // 温度选择
     let selectedSugar = 'half'; // 糖度选择
 
+    // ==================== UI 更新防抖调度 ====================
+    let _uiUpdatePending = false;
+    function _scheduleUIUpdate() {
+        if (_uiUpdatePending) return;
+        _uiUpdatePending = true;
+        requestAnimationFrame(() => {
+            updateFrequentCoffees();
+            updateAllRecords();
+            updateCFTIDisplay();
+            updateStatsPage();
+            _uiUpdatePending = false;
+        });
+    }
+
     // ==================== 页面切换 ====================
     function switchPage(pageId) {
         const currentPage = document.querySelector('.page.active');
@@ -1078,10 +1092,7 @@
                 coffeeRecords = JSON.parse(stored);
             }
         }
-        updateFrequentCoffees();
-        updateAllRecords();
-        updateCFTIDisplay();
-        updateStatsPage();
+        _scheduleUIUpdate();
     }
 
     function saveCoffeeRecord(record) {
@@ -1098,10 +1109,7 @@
             record.id = newId;
         }
         coffeeRecords.push(record);
-        updateFrequentCoffees();
-        updateAllRecords();
-        updateCFTIDisplay();
-        updateStatsPage();
+        _scheduleUIUpdate();
     }
 
     function deleteCoffeeRecord(id) {
@@ -1114,10 +1122,7 @@
         if (idx >= 0) {
             coffeeRecords.splice(idx, 1);
         }
-        updateFrequentCoffees();
-        updateAllRecords();
-        updateCFTIDisplay();
-        updateStatsPage();
+        _scheduleUIUpdate();
 
         // 恢复日历格子显示数字
         const targetCell = document.getElementById(todayCellId);
@@ -1603,10 +1608,7 @@
         }
         // 从本地数组移除
         coffeeRecords = coffeeRecords.filter(r => r.name !== name);
-        updateFrequentCoffees();
-        updateAllRecords();
-        updateCFTIDisplay();
-        updateStatsPage();
+        _scheduleUIUpdate();
 
         // 恢复日历贴纸数字
         const targetCell = document.getElementById(todayCellId);
