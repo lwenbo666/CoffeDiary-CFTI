@@ -64,8 +64,11 @@ class SplashOverlayView @JvmOverloads constructor(
     }
 
     // ==================== 文字路径 ====================
-    private data class LetterPath(val path: Path, val length: Float)
+    private data class LetterPath(val path: Path, val length: Float, val pathMeasure: PathMeasure)
     private val letterPaths: List<LetterPath>
+
+    // ==================== 图标画笔 ====================
+    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private val totalAnimDuration = 2200L
 
@@ -107,7 +110,7 @@ class SplashOverlayView @JvmOverloads constructor(
 
                 val pm = PathMeasure(path, false)
                 val length = pm.length
-                add(LetterPath(path, length))
+                add(LetterPath(path, length, pm))
                 cursorX += charWidth + letterSpacing
             }
         }
@@ -200,9 +203,7 @@ class SplashOverlayView @JvmOverloads constructor(
             }
             canvas.save()
             canvas.clipPath(iconPath)
-            val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                alpha = (iconAlpha * 255).toInt()
-            }
+            iconPaint.alpha = (iconAlpha * 255).toInt()
             canvas.drawBitmap(
                 scaledIcon,
                 cx - scaledIcon.width / 2f,
@@ -223,9 +224,8 @@ class SplashOverlayView @JvmOverloads constructor(
             val letterPhase = phase(letterStart, letterEnd)
             if (letterPhase > 0f) {
                 val drawPath = Path()
-                val pm = PathMeasure(letterPath.path, false)
-                val stop = pm.length * letterPhase.coerceAtMost(1f)
-                pm.getSegment(0f, stop, drawPath, true)
+                val stop = letterPath.length * letterPhase.coerceAtMost(1f)
+                letterPath.pathMeasure.getSegment(0f, stop, drawPath, true)
                 strokePaint.alpha = 255
                 canvas.drawPath(drawPath, strokePaint)
             }

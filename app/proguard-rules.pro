@@ -1,21 +1,16 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# --- JavaScript Interface 桥接（必须保留，否则 R8 混淆后 WebView JS 调用失败） ---
+-keepclassmembers class com.example.coffeediary.MainActivity$AndroidBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# --- Room 数据库实体（必须保留字段名，否则 Room 反射失败） ---
+-keep class com.example.coffeediary.CoffeeRecord { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# --- 自定义 View（XML layout 中引用，需保留构造函数） ---
+-keep class com.example.coffeediary.SplashOverlayView {
+    public <init>(...);
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# --- 保留行号用于调试堆栈 ---
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

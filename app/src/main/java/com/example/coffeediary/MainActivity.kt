@@ -56,7 +56,14 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             allowFileAccess = true
             mediaPlaybackRequiresUserGesture = false
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            builtInZoomControls = false
+            displayZoomControls = false
+            setSupportZoom(false)
         }
+        // 启用硬件加速层，提升 WebView 渲染性能
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -128,6 +135,8 @@ class MainActivity : AppCompatActivity() {
 
             splashOverlay.dismiss {
                 webView.visibility = View.VISIBLE
+                // 通知 WebView 启动入场动画（之前被 splash 遮住，动画一直 paused）
+                webView.evaluateJavascript("document.body.classList.add('app-ready')", null)
             }
         }
     }
@@ -156,9 +165,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleGalleryResult(uri: Uri) {
+        var bitmap: Bitmap? = null
+        var resized: Bitmap? = null
         try {
             val inputStream = contentResolver.openInputStream(uri) ?: return
-            val bitmap = BitmapFactory.decodeStream(inputStream)
+            bitmap = BitmapFactory.decodeStream(inputStream)
             inputStream.close()
 
             // 缩放到最大 800px 宽
@@ -170,14 +181,12 @@ class MainActivity : AppCompatActivity() {
                 w = (w * ratio).toInt()
                 h = (h * ratio).toInt()
             }
-            val resized = Bitmap.createScaledBitmap(bitmap, w, h, true)
+            resized = Bitmap.createScaledBitmap(bitmap, w, h, true)
 
             val outputStream = ByteArrayOutputStream()
             resized.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
             val base64 = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
             outputStream.close()
-            bitmap.recycle()
-            resized.recycle()
 
             runOnUiThread {
                 webView.evaluateJavascript("onGalleryImage('$base64')") { }
@@ -187,6 +196,9 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 Toast.makeText(this, "图片读取失败", Toast.LENGTH_SHORT).show()
             }
+        } finally {
+            bitmap?.recycle()
+            resized?.recycle()
         }
     }
 

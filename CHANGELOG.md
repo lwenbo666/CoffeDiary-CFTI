@@ -1,5 +1,19 @@
 # 版本更新日志
 
+## v0.1.2.3 (2026-05-21)
+
+### 🔧 优化
+- 动画性能优化：`fadeInUp` 替换为 `translate3d` + `will-change` + `backface-visibility`，启用 GPU 合成层，消除 repaint 掉帧
+- 动画调度优化：统计页 3 个 Chart.js 实例改为懒初始化（首次切换到统计页时才创建），降低首页主线程负载
+- 动画调度优化：日历 DOM 构建推迟至双 `rAF`，避免与 `fadeInUp` 抢占帧时间片
+- 动画时序修复：`fadeInUp` 默认 `animation-play-state: paused`，Splash 消失后由 Kotlin `evaluateJavascript` 注入 `body.app-ready` 才启动，解决动画在 Splash 遮挡期间跑完导致的假性掉帧
+- 页面切换过渡时长 `0.28s` → `0.35s`，视觉更从容
+
+### 🚀 技术
+- JS 兜底超时：`body.app-ready` 5 秒未注入时自动触发动画，防止永远卡住
+
+---
+
 ## v0.1.2.2 (2026-05-21)
 
 ### 🔧 优化

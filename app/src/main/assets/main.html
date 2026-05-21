@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CFTI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" defer></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
@@ -18,8 +18,8 @@
             --glass-border: rgba(255, 255, 255, 0.55);
             --glass-blur: 30px;
             --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
-            --transition-duration: 0.4s;
-            --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-duration: 0.35s;
+            --transition-easing: cubic-bezier(0.22, 0.61, 0.36, 1);
         }
 
         * {
@@ -73,21 +73,27 @@
             overflow-x: hidden;
             opacity: 0;
             visibility: hidden;
-            transform: translateX(100%);
-            transition: all var(--transition-duration) var(--transition-easing);
+            transform: translate3d(100%, 0, 0);
+            transition: opacity var(--transition-duration) var(--transition-easing),
+                        transform var(--transition-duration) var(--transition-easing);
             z-index: 1;
             background: transparent;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            contain: layout style paint;
+            pointer-events: none;
         }
 
         .page.active {
             opacity: 1;
             visibility: visible;
-            transform: translateX(0);
+            transform: translate3d(0, 0, 0);
             z-index: 2;
+            pointer-events: auto;
         }
 
         .page.prev {
-            transform: translateX(-100%);
+            transform: translate3d(-100%, 0, 0);
             z-index: 1;
         }
 
@@ -173,8 +179,9 @@
         /* ==================== 贴纸样式 ==================== */
         .sticker-wrapper {
             animation: float 4s ease-in-out infinite;
+            animation-play-state: paused;
             transform-origin: center center;
-            transition: transform 0.3s ease, z-index 0.3s ease;
+            transition: transform 0.3s ease;
             cursor: pointer;
             position: absolute;
             inset: 0;
@@ -186,6 +193,11 @@
         @keyframes float {
             0%, 100% { transform: translateY(0px) rotate(var(--rotate)); }
             50% { transform: translateY(-8px) rotate(var(--rotate)); }
+        }
+
+        /* 仅在日历页可见时运行动画，其他页暂停以节省 GPU */
+        .page.active .sticker-wrapper {
+            animation-play-state: running;
         }
 
         .sticker-wrapper.scaled {
@@ -279,9 +291,7 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.58);
             z-index: 2000;
             display: none;
             align-items: center;
@@ -296,9 +306,9 @@
         }
 
         .modal-content {
-            background: rgba(255, 255, 255, 0.55);
-            backdrop-filter: blur(34px);
-            -webkit-backdrop-filter: blur(34px);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             width: 90%;
             max-width: 400px;
             border-radius: 24px;
@@ -316,9 +326,7 @@
         .name-modal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.65);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.58);
             z-index: 3000;
             display: none;
             align-items: center;
@@ -333,9 +341,9 @@
         }
 
         .name-modal-content {
-            background: rgba(255, 255, 255, 0.55);
-            backdrop-filter: blur(34px);
-            -webkit-backdrop-filter: blur(34px);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             width: 90%;
             max-width: 350px;
             border-radius: 20px;
@@ -354,9 +362,7 @@
         .delete-modal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.58);
             z-index: 4000;
             display: none;
             align-items: center;
@@ -371,9 +377,9 @@
         }
 
         .delete-modal-content {
-            background: rgba(255, 255, 255, 0.55);
-            backdrop-filter: blur(34px);
-            -webkit-backdrop-filter: blur(34px);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             width: 90%;
             max-width: 350px;
             border-radius: 20px;
@@ -398,30 +404,38 @@
         @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translate3d(0, 24px, 0);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translate3d(0, 0, 0);
             }
         }
 
         .fade-in-up {
-            animation: fadeInUp 0.6s ease forwards;
+            animation: fadeInUp 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+            animation-play-state: paused;
             opacity: 0;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+        }
+
+        /* 只有 splash 消失后（body.app-ready）才真正运行动画 */
+        body.app-ready .fade-in-up {
+            animation-play-state: running;
         }
 
         /* ==================== 咖啡记录项 ==================== */
         .coffee-record-item {
             background: rgba(255, 255, 255, 0.38);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border-radius: 16px;
             padding: 12px;
             margin-bottom: 8px;
             border: 1px solid rgba(255, 255, 255, 0.5);
             box-shadow: 0 8px 28px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.03);
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
             position: relative;
         }
 
@@ -527,9 +541,7 @@
         /* ==================== 毛玻璃卡片 ==================== */
         section .bg-white,
         .coffee-record-item.bg-white {
-            background: rgba(255, 255, 255, 0.38) !important;
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
+            background: rgba(255, 255, 255, 0.45) !important;
             border: 1px solid rgba(255, 255, 255, 0.5);
             box-shadow: 0 8px 28px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.03);
         }
@@ -585,9 +597,7 @@
 
         /* ==================== 统计页指标卡片 ==================== */
         .stats-metric-card {
-            background: rgba(255, 255, 255, 0.35);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
+            background: rgba(255, 255, 255, 0.45);
             border: 1px solid rgba(255, 255, 255, 0.5);
             border-radius: 20px;
             padding: 18px 14px;
@@ -624,9 +634,7 @@
 
         /* ==================== 统计页图表卡片 ==================== */
         .stats-chart-card {
-            background: rgba(255, 255, 255, 0.35);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
+            background: rgba(255, 255, 255, 0.45);
             border: 1px solid rgba(255, 255, 255, 0.5);
             border-radius: 20px;
             padding: 18px;
@@ -900,17 +908,32 @@
             updateFrequentCoffees();
             updateAllRecords();
             updateCFTIDisplay();
-            updateStatsPage();
+            // 只有统计页已展示过才更新图表，避免在首页就初始化 3 个 Chart.js 实例
+            if (_statsPageReady) {
+                updateStatsPage();
+            }
             _uiUpdatePending = false;
         });
     }
 
     // ==================== 页面切换 ====================
+    let _pendingPage = null;
+
     function switchPage(pageId) {
         const currentPage = document.querySelector('.page.active');
         const targetPage = document.getElementById(pageId);
 
         if (currentPage === targetPage) return;
+        // 防止重复切换
+        if (_pendingPage === pageId) return;
+        _pendingPage = pageId;
+
+        // 清理旧页面上残留的监听器
+        document.querySelectorAll('.page').forEach(p => {
+            p.removeEventListener('transitionend', _onPageTransitionEnd);
+        });
+        // 在目标页上监听 transform 过渡结束（不用 once，因为 opacity 也会触发）
+        targetPage.addEventListener('transitionend', _onPageTransitionEnd);
 
         currentPage.classList.remove('active');
         currentPage.classList.add('prev');
@@ -918,7 +941,7 @@
         targetPage.classList.remove('prev');
         targetPage.classList.add('active');
 
-        // 更新导航栏
+        // 更新导航栏（视觉反馈立即生效）
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -929,13 +952,42 @@
         } else {
             document.querySelector('.nav-item:nth-child(2)').classList.add('active');
             document.getElementById('fabBtn').style.display = 'none';
-            // 切换到统计页时刷新所有数据
-            updateStatsPage();
-            // 触发交错入场动画
-            triggerStatsAnimation();
-            if (hasEnoughRecords()) {
-                setTimeout(initRadarChart, 200);
+        }
+    }
+
+    function _onPageTransitionEnd(e) {
+        // 只处理 transform 过渡结束（opacity 也会触发一次，我们忽略它）
+        if (e.propertyName !== 'transform') return;
+
+        // 从所有页面移除监听器，防止重复触发
+        document.querySelectorAll('.page').forEach(p => {
+            p.removeEventListener('transitionend', _onPageTransitionEnd);
+        });
+
+        const activePage = document.querySelector('.page.active');
+        if (!activePage) return;
+        const pageId = activePage.id;
+
+        // 清理旧页面的 prev 状态
+        document.querySelectorAll('.page.prev').forEach(p => {
+            p.classList.remove('prev');
+        });
+
+        _pendingPage = null;
+
+        if (pageId === 'statsPage') {
+            // 首次切换到统计页才初始化 Chart.js，大幅降低首页负载
+            if (!_statsPageReady) {
+                _statsPageReady = true;
             }
+            // 过渡完成后再执行重渲染，避免与动画竞争帧
+            requestAnimationFrame(() => {
+                updateStatsPage();
+                triggerStatsAnimation();
+                if (hasEnoughRecords()) {
+                    setTimeout(initRadarChart, 250);
+                }
+            });
         }
     }
 
@@ -982,14 +1034,14 @@
             } else {
                 window.location.href = 'menu.html';
             }
-        }, 300);
+        }, 200);
     }
 
     // 页面显示时自动收起过渡遮罩
     window.addEventListener('pageshow', () => {
         const cover = document.getElementById('transitionCover');
         if (cover) {
-            setTimeout(() => cover.classList.remove('active'), 100);
+            setTimeout(() => cover.classList.remove('active'), 80);
         }
     });
 
@@ -2059,11 +2111,11 @@
         btn.style.display = 'none';
 
         html2canvas(card, {
-            scale: 2,
+            scale: 1.5,
             useCORS: true,
             backgroundColor: '#FFFFFF'
         }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.85);
             if (window.AndroidBridge) {
                 window.AndroidBridge.saveImage(imgData);
             } else {
@@ -2077,58 +2129,81 @@
         });
     }
 
+    // ==================== 统计页懒初始化标记 ====================
+    let _statsPageReady = false;
+
     // ==================== 初始化 ====================
     window.onload = function() {
-        initCalendar();
+        // 关键任务：先加载数据
         loadCoffeeRecords();
-        updateStatsPage(); // 初始化统计页数据
 
-        // 加载初始贴纸（如果有记录）
-        if (coffeeRecords.length > 0) {
-            const lastRecord = coffeeRecords[coffeeRecords.length - 1];
-            addStickerToCalendar(lastRecord.photo, lastRecord.name, lastRecord.id);
-        } else {
-            // 没有记录时显示示例贴纸（但不显示CFTI）
-            const targetCell = document.getElementById(todayCellId);
-            targetCell.innerHTML = '';
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'sticker-wrapper';
-            wrapper.style.setProperty('--rotate', '-5deg');
-
-            const img = document.createElement('img');
-            img.src = 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200';
-            img.className = 'sticker-img';
-            img.alt = '示例咖啡';
-
-            const tag = document.createElement('div');
-            tag.className = 'name-tag';
-            tag.textContent = '示例咖啡';
-
-            const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.onclick = function(e) {
-                e.stopPropagation();
-                alert('这是示例贴纸，不能删除哦！');
-            };
-
-            wrapper.appendChild(img);
-            wrapper.appendChild(tag);
-            wrapper.appendChild(deleteBtn);
-
-            wrapper.addEventListener('click', function(e) {
-                e.stopPropagation();
-                if (this.classList.contains('scaled')) {
-                    alert('这是示例贴纸，不能删除哦！');
+        // 日历 DOM 推迟到下一帧，避免与 fadeInUp 动画抢占主线程
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                initCalendar();
+                // 加载初始贴纸（如果有记录）
+                if (coffeeRecords.length > 0) {
+                    const lastRecord = coffeeRecords[coffeeRecords.length - 1];
+                    addStickerToCalendar(lastRecord.photo, lastRecord.name, lastRecord.id);
                 } else {
-                    this.classList.add('scaled');
+                    addDemoSticker();
                 }
             });
+        });
 
-            targetCell.appendChild(wrapper);
-        }
+        // 统计页 Chart.js 延迟到首次切换到 statsPage 时才初始化
+        // 不在 onload 时调用 updateStatsPage()
+
+        // 兜底：如果 5 秒内 Kotlin 没有通过 evaluateJavascript 通知 body.app-ready，
+        // 那么在 JS 侧自行动画，防止动画永远卡住（浏览器开发环境也走这里）
+        setTimeout(() => {
+            if (!document.body.classList.contains('app-ready')) {
+                document.body.classList.add('app-ready');
+            }
+        }, 5000);
     };
+
+    // 提取示例贴纸逻辑
+    function addDemoSticker() {
+        const targetCell = document.getElementById(todayCellId);
+        targetCell.innerHTML = '';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sticker-wrapper';
+        wrapper.style.setProperty('--rotate', '-5deg');
+
+        const img = document.createElement('img');
+        img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect fill="%23F5E6D3" width="200" height="200" rx="16"/><text fill="%238D6E63" font-size="40" font-family="sans-serif" text-anchor="middle" x="100" y="115">☕</text></svg>');
+        img.className = 'sticker-img';
+        img.alt = '示例咖啡';
+
+        const tag = document.createElement('div');
+        tag.className = 'name-tag';
+        tag.textContent = '示例咖啡';
+
+        const deleteBtn = document.createElement('div');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.onclick = function(e) {
+            e.stopPropagation();
+            alert('这是示例贴纸，不能删除哦！');
+        };
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(tag);
+        wrapper.appendChild(deleteBtn);
+
+        wrapper.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (this.classList.contains('scaled')) {
+                alert('这是示例贴纸，不能删除哦！');
+            } else {
+                this.classList.add('scaled');
+            }
+        });
+
+        targetCell.appendChild(wrapper);
+    }
 
     // 点击空白处关闭贴纸放大
     document.addEventListener('click', function(e) {
