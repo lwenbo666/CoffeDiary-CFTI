@@ -207,20 +207,27 @@
             inset: -80%;
         }
 
-        .sticker-wrapper.scaled .sticker-img {
+        .sticker-wrapper.scaled .sticker-frame {
             width: 337%;
-            height: auto;
         }
 
-        .sticker-img {
+        .sticker-frame {
+            width: 350%;
+            height: auto;
+            aspect-ratio: 5 / 6;
             border-radius: 16px;
             border: 4px solid white;
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+            position: relative;
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .sticker-img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            aspect-ratio: 5 / 6;
-            width: 350%;
-            height: auto;
-            transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease;
+            display: block;
         }
 
         .name-tag {
@@ -1665,10 +1672,15 @@
         wrapper.className = 'sticker-wrapper';
         wrapper.style.setProperty('--rotate', (Math.random() * 20 - 10) + 'deg');
 
+        const frame = document.createElement('div');
+        frame.className = 'sticker-frame';
+
         const img = document.createElement('img');
         img.src = dataUrl;
         img.className = 'sticker-img';
         img.alt = name;
+
+        frame.appendChild(img);
 
         const tag = document.createElement('div');
         tag.className = 'name-tag';
@@ -1683,7 +1695,7 @@
             showDeleteConfirm(recordId, name);
         };
 
-        wrapper.appendChild(img);
+        wrapper.appendChild(frame);
         wrapper.appendChild(tag);
         wrapper.appendChild(deleteBtn);
 
@@ -2285,10 +2297,15 @@
         wrapper.className = 'sticker-wrapper';
         wrapper.style.setProperty('--rotate', '-5deg');
 
+        const frame = document.createElement('div');
+        frame.className = 'sticker-frame';
+
         const img = document.createElement('img');
         img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect fill="%23F5E6D3" width="200" height="200" rx="16"/><text fill="%238D6E63" font-size="40" font-family="sans-serif" text-anchor="middle" x="100" y="115">☕</text></svg>');
         img.className = 'sticker-img';
         img.alt = '示例咖啡';
+
+        frame.appendChild(img);
 
         const tag = document.createElement('div');
         tag.className = 'name-tag';
@@ -2302,7 +2319,7 @@
             alert('这是示例贴纸，不能删除哦！');
         };
 
-        wrapper.appendChild(img);
+        wrapper.appendChild(frame);
         wrapper.appendChild(tag);
         wrapper.appendChild(deleteBtn);
 
