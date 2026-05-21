@@ -24,10 +24,19 @@
             color: var(--text-primary);
             margin: 0;
             padding: 0;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
             opacity: 0;
             transform: translateY(20px);
             transition: opacity 0.35s ease, transform 0.35s ease;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        body::-webkit-scrollbar {
+            display: none;
         }
 
         body.loaded {
@@ -53,13 +62,11 @@
 
         /* ==================== 头部 ==================== */
         .header {
-            position: sticky;
-            top: 0;
             z-index: 100;
             background: rgba(255, 255, 255, 0.35);
             backdrop-filter: blur(34px);
             -webkit-backdrop-filter: blur(34px);
-            padding: 16px 20px;
+            padding: 40px 20px 16px;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -69,8 +76,6 @@
 
         /* ==================== 筛选Tab栏 ==================== */
         .filter-bar-wrapper {
-            position: sticky;
-            top: 56px;
             z-index: 99;
             display: flex;
             justify-content: center;
@@ -148,12 +153,40 @@
             border-radius: 20px;
         }
 
-        /* ==================== 食谱网格 ==================== */
+        /* ==================== 食谱翻页容器 ==================== */
+        .recipes-pager-wrapper {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
         .recipes-container {
-            padding: 2px 16px 100px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            flex: 1;
+            display: flex;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .recipes-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .recipe-page {
+            flex: 0 0 100vw;
+            width: 100vw;
+            scroll-snap-align: center;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 16px 20px 0;
+            box-sizing: border-box;
         }
 
         .recipes-container.empty {
@@ -161,12 +194,40 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 60vh;
-            grid-template-columns: none;
+            min-height: auto;
+            overflow-x: hidden;
+            scroll-snap-type: none;
+        }
+
+        /* ==================== 页面指示器 ==================== */
+        .page-indicators {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 0 24px;
+            flex-shrink: 0;
+        }
+
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(141, 110, 99, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .page-dot.active {
+            width: 24px;
+            border-radius: 4px;
+            background: rgba(141, 110, 99, 0.88);
+            box-shadow: 0 2px 6px rgba(141, 110, 99, 0.3);
         }
 
         /* ==================== 食谱卡片 ==================== */
         .recipe-card {
+            width: 100%;
+            max-width: 380px;
             background: rgba(255, 255, 255, 0.38);
             backdrop-filter: blur(28px);
             -webkit-backdrop-filter: blur(28px);
@@ -726,7 +787,10 @@
 </div>
 
 <!-- 食谱列表 -->
-<div class="recipes-container" id="recipesContainer"></div>
+<div class="recipes-pager-wrapper">
+    <div class="recipes-container" id="recipesContainer"></div>
+    <div class="page-indicators" id="pageIndicators"></div>
+</div>
 
 <!-- FAB 添加按钮 -->
 <button class="fab" onclick="openAddModal()">
@@ -831,6 +895,8 @@
     let selectedRoast = '中深烘';
     let selectedUnit = 'ml';
     let currentFilter = 'all';
+    let currentPage = 0;
+    let totalPages = 0;
 
     // ==================== 初始化 ====================
     function init() {
@@ -871,24 +937,61 @@
                     <div class="empty-state-desc">${currentFilter === 'all' ? '点击右下角 + 号<br>添加你的第一份咖啡配方' : '切换分类或添加新配方'}</div>
                 </div>
             `;
+            updateIndicators(0);
             return;
         }
 
         container.className = 'recipes-container';
         container.innerHTML = filtered.map((r, index) => `
-            <div class="recipe-card" onclick="openDetailModal(${recipes.indexOf(r)})">
-                <div class="recipe-image">
-                    ${r.image ? `<img src="${r.image}" alt="${r.name}">` : '<i class="fas fa-mug-hot"></i>'}
-                </div>
-                <div class="recipe-info">
-                    <div class="recipe-name">${escapeHtml(r.name)}</div>
-                    <div class="recipe-meta">
-                        <span class="recipe-tag ${r.category === '拿铁' ? '' : 'hot'}">${escapeHtml(r.category || '美式')}</span>
-                        <span class="recipe-tag" style="background:rgba(141,110,99,0.08);color:#8D6E63;">${escapeHtml(r.roast || '')}</span>
+            <div class="recipe-page" data-index="${index}">
+                <div class="recipe-card" onclick="openDetailModal(${recipes.indexOf(r)})">
+                    <div class="recipe-image">
+                        ${r.image ? `<img src="${r.image}" alt="${r.name}">` : '<i class="fas fa-mug-hot"></i>'}
+                    </div>
+                    <div class="recipe-info">
+                        <div class="recipe-name">${escapeHtml(r.name)}</div>
+                        <div class="recipe-meta">
+                            <span class="recipe-tag ${r.category === '拿铁' ? '' : 'hot'}">${escapeHtml(r.category || '美式')}</span>
+                            <span class="recipe-tag" style="background:rgba(141,110,99,0.08);color:#8D6E63;">${escapeHtml(r.roast || '')}</span>
+                        </div>
                     </div>
                 </div>
             </div>
         `).join('');
+
+        totalPages = filtered.length;
+        currentPage = 0;
+        updateIndicators(filtered.length);
+        container.scrollLeft = 0;
+    }
+
+    function updateIndicators(count) {
+        const indicatorEl = document.getElementById('pageIndicators');
+        if (count <= 1) {
+            indicatorEl.innerHTML = '';
+            return;
+        }
+        indicatorEl.innerHTML = Array.from({ length: count }, (_, i) => `
+            <div class="page-dot${i === currentPage ? ' active' : ''}"></div>
+        `).join('');
+    }
+
+    function updateActiveIndicator() {
+        const dots = document.querySelectorAll('.page-dot');
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === currentPage);
+        });
+    }
+
+    function goToPage(index) {
+        const container = document.getElementById('recipesContainer');
+        if (container.classList.contains('empty')) return;
+        const pages = container.children;
+        if (index >= 0 && index < pages.length) {
+            currentPage = index;
+            pages[index].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            updateActiveIndicator();
+        }
     }
 
     function escapeHtml(text) {
@@ -1120,7 +1223,7 @@
 
     function hideModal(id) {
         document.getElementById(id).classList.remove('show');
-        document.body.style.overflow = '';
+        document.body.style.overflow = 'hidden';
     }
 
     // ==================== 返回 ====================
@@ -1162,10 +1265,46 @@
             });
         });
 
+        // 翻页滚动监听
+        const container = document.getElementById('recipesContainer');
+        let scrollTimeout;
+        container.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const pageWidth = container.clientWidth;
+                if (pageWidth <= 0) return;
+                const newPage = Math.round(container.scrollLeft / pageWidth);
+                if (newPage !== currentPage && newPage >= 0 && newPage < totalPages) {
+                    currentPage = newPage;
+                    updateActiveIndicator();
+                }
+            }, 50);
+        }, { passive: true });
+
+        // 触摸滑动检测
+        let touchStartX = 0;
+        container.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+
+        container.addEventListener('touchend', (e) => {
+            const diffX = touchStartX - e.changedTouches[0].clientX;
+            // 滑动超过 50px 才触发翻页
+            if (Math.abs(diffX) > 50) {
+                const container = document.getElementById('recipesContainer');
+                const pageWidth = container.clientWidth;
+                const targetPage = Math.round(container.scrollLeft / pageWidth);
+                if (targetPage >= 0 && targetPage < totalPages) {
+                    currentPage = targetPage;
+                    goToPage(currentPage);
+                    updateActiveIndicator();
+                }
+            }
+        }, { passive: true });
+
         // 页面加载完成后显示
         requestAnimationFrame(() => {
             document.body.classList.add('loaded');
-            // 隐藏过渡遮罩
             setTimeout(() => {
                 const cover = document.getElementById('transitionCover');
                 if (cover) cover.classList.remove('active');
