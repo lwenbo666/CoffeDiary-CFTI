@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -16,12 +17,15 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,6 +34,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var db: AppDatabase
     private var isPageLoaded = false
     private var isSplashDone = false
+    private var currentPage = "main"
+
+    private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { handleGalleryResult(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,10 +145,48 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
+        if (currentPage == "menu") {
+            webView.loadUrl("file:///android_asset/main.html")
+            currentPage = "main"
+        } else if (webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()
+        }
+    }
+
+    private fun handleGalleryResult(uri: Uri) {
+        try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream.close()
+
+            // 缩放到最大 800px 宽
+            val maxSize = 800
+            var w = bitmap.width
+            var h = bitmap.height
+            if (w > maxSize || h > maxSize) {
+                val ratio = min(maxSize.toFloat() / w, maxSize.toFloat() / h)
+                w = (w * ratio).toInt()
+                h = (h * ratio).toInt()
+            }
+            val resized = Bitmap.createScaledBitmap(bitmap, w, h, true)
+
+            val outputStream = ByteArrayOutputStream()
+            resized.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+            val base64 = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            outputStream.close()
+            bitmap.recycle()
+            resized.recycle()
+
+            runOnUiThread {
+                webView.evaluateJavascript("onGalleryImage('$base64')") { }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            runOnUiThread {
+                Toast.makeText(this, "图片读取失败", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -189,6 +236,29 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface
         fun saveImage(base64: String) {
             saveImageToGallery(base64)
+        }
+
+        @android.webkit.JavascriptInterface
+        fun openGallery() {
+            runOnUiThread {
+                galleryLauncher.launch("image/*")
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun loadPage(page: String) {
+            runOnUiThread {
+                when (page) {
+                    "menu" -> {
+                        currentPage = "menu"
+                        webView.loadUrl("file:///android_asset/menu.html")
+                    }
+                    "main" -> {
+                        currentPage = "main"
+                        webView.loadUrl("file:///android_asset/main.html")
+                    }
+                }
+            }
         }
     }
 

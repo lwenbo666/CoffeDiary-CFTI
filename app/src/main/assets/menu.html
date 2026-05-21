@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>咖啡菜单</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #FDFCFA;
+            --text-primary: #3E2723;
+            --accent: #8D6E63;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(160deg, #FFF8F0 0%, #E8DDD3 35%, #F2EAE0 55%, #FFF5ED 75%, #EDE0D4 100%);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+
+        body.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ==================== 页面过渡遮罩 ==================== */
+        #transitionCover {
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            background: #FDFCFA;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #transitionCover.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* ==================== 头部 ==================== */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(34px);
+            -webkit-backdrop-filter: blur(34px);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: none;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+        }
+
+        /* ==================== 筛选Tab栏 ==================== */
+        .filter-bar-wrapper {
+            position: sticky;
+            top: 56px;
+            z-index: 99;
+            display: flex;
+            justify-content: center;
+            padding: 6px 0 14px 0;
+            background: transparent;
+        }
+
+        .tab-bar {
+            display: inline-flex;
+            gap: 4px;
+            padding: 4px;
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        }
+
+        .tab-btn {
+            background: transparent;
+            backdrop-filter: none;
+            border: none;
+            color: #8D6E63;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .tab-btn.tab-active {
+            background: rgba(141, 110, 99, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(141, 110, 99, 0.25);
+        }
+
+        .tab-btn:active {
+            transform: scale(0.96);
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(141, 110, 99, 0.1);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .back-btn:active {
+            background: rgba(141, 110, 99, 0.2);
+            transform: scale(0.95);
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .header-count {
+            font-size: 13px;
+            color: #999;
+            background: rgba(0,0,0,0.04);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        /* ==================== 食谱网格 ==================== */
+        .recipes-container {
+            padding: 2px 16px 100px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .recipes-container.empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            grid-template-columns: none;
+        }
+
+        /* ==================== 食谱卡片 ==================== */
+        .recipe-card {
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.03);
+        }
+
+        .recipe-card:active {
+            transform: scale(0.97);
+        }
+
+        .recipe-image {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            background: linear-gradient(135deg, #f5f0eb 0%, #e8ddd3 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #BCAAA4;
+            font-size: 40px;
+        }
+
+        .recipe-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .recipe-info {
+            padding: 10px 12px 12px;
+        }
+
+        .recipe-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .recipe-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .recipe-tag {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(141, 110, 99, 0.1);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .recipe-tag.ice { background: rgba(100, 181, 246, 0.12); color: #42A5F5; }
+        .recipe-tag.hot { background: rgba(239, 108, 80, 0.12); color: #EF6C50; }
+        .recipe-tag.warm { background: rgba(255, 183, 77, 0.12); color: #FF9800; }
+
+        /* ==================== FAB 添加按钮 ==================== */
+        .fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(141, 110, 99, 0.88) 0%, rgba(78, 52, 46, 0.88) 100%);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 8px 32px rgba(141, 110, 99, 0.4), 0 0 0 1px rgba(255,255,255,0.25) inset;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 200;
+            transition: all 0.3s ease;
+            border: none;
+            outline: none;
+        }
+
+        .fab:active {
+            transform: scale(0.9);
+            box-shadow: 0 4px 16px rgba(141, 110, 99, 0.3), 0 0 0 1px rgba(255,255,255,0.2) inset;
+        }
+
+        /* ==================== 空状态 ==================== */
+        .empty-state {
+            text-align: center;
+            color: #BCAAA4;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-desc {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.6;
+        }
+
+        /* ==================== 模态框 ==================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 500;
+            display: flex;
+            align-items: flex-end;
+            visibility: hidden;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(34px);
+            -webkit-backdrop-filter: blur(34px);
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.55);
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.08);
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-handle {
+            width: 36px;
+            height: 4px;
+            background: #DDD;
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* ==================== 表单 ==================== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid rgba(141, 110, 99, 0.12);
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            outline: none;
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid rgba(141, 110, 99, 0.12);
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            outline: none;
+            resize: vertical;
+            min-height: 80px;
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .form-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        /* ==================== 自定义下拉框 ==================== */
+        .form-select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid rgba(141, 110, 99, 0.12);
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            outline: none;
+            transition: border-color 0.3s ease, background 0.3s ease;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238D6E63' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 12px;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        .form-select:focus {
+            border-color: var(--accent);
+        }
+
+        .input-unit-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-unit-group .form-input {
+            flex: 1;
+        }
+
+        .input-unit-group .unit-seg {
+            display: flex;
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 3px;
+            border: 1.5px solid rgba(141, 110, 99, 0.12);
+        }
+
+        .unit-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            color: #999;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .unit-btn.selected {
+            background: rgba(141, 110, 99, 0.88);
+            color: white;
+            box-shadow: 0 2px 6px rgba(141, 110, 99, 0.2);
+        }
+
+        /* ==================== 图片选择区 ==================== */
+        .image-picker {
+            width: 100%;
+            height: 160px;
+            border: 2px dashed rgba(141, 110, 99, 0.15);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .image-picker:active {
+            border-color: var(--accent);
+            background: rgba(141, 110, 99, 0.04);
+        }
+
+        .image-picker.has-image {
+            border-style: solid;
+            border-color: transparent;
+        }
+
+        .image-picker img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .image-picker-icon {
+            font-size: 32px;
+            color: #BCAAA4;
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .image-picker-text {
+            font-size: 13px;
+            color: #999;
+            position: relative;
+            z-index: 1;
+        }
+
+        .image-picker.has-image .image-picker-icon,
+        .image-picker.has-image .image-picker-text {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .image-picker.has-image:active .image-picker-icon,
+        .image-picker.has-image:active .image-picker-text {
+            opacity: 1;
+        }
+
+        /* ==================== 分段选择器 ==================== */
+        .segment-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .segment-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: 1.5px solid rgba(141, 110, 99, 0.12);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: #999;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .segment-btn.selected {
+            border-color: var(--accent);
+            background: rgba(141, 110, 99, 0.12);
+            color: var(--accent);
+            box-shadow: 0 2px 8px rgba(141, 110, 99, 0.1);
+        }
+
+        /* ==================== 按钮 ==================== */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-cancel {
+            flex: 1;
+            padding: 14px;
+            border: 1.5px solid #E0E0E0;
+            border-radius: 14px;
+            background: white;
+            color: #666;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel:active {
+            background: #f5f5f5;
+        }
+
+        .btn-save {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--accent) 0%, #4E342E 100%);
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save:active {
+            opacity: 0.9;
+            transform: scale(0.98);
+        }
+
+        .btn-delete {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            background: rgba(239, 68, 68, 0.08);
+            color: #E53935;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+        }
+
+        .btn-delete:active {
+            background: rgba(239, 68, 68, 0.16);
+        }
+
+        /* ==================== 详情模态框 ==================== */
+        .detail-image {
+            width: 100%;
+            aspect-ratio: 16/10;
+            object-fit: cover;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f5f0eb 0%, #e8ddd3 100%);
+        }
+
+        .detail-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 16px 0 8px;
+        }
+
+        .detail-tags {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .detail-section {
+            margin-bottom: 16px;
+        }
+
+        .detail-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .detail-section-content {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .detail-meta {
+            font-size: 12px;
+            color: #BBB;
+            margin-top: 16px;
+            text-align: right;
+        }
+
+        /* ==================== Toast ==================== */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(62, 39, 35, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+<!-- 页面过渡遮罩 -->
+<div id="transitionCover"></div>
+
+<!-- 头部 -->
+<div class="header">
+    <div class="back-btn" onclick="goBack()">
+        <i class="fas fa-arrow-left"></i>
+    </div>
+    <div class="header-title">📖 咖啡菜单</div>
+    <div class="header-count" id="recipeCount">0 个配方</div>
+</div>
+
+<!-- 筛选Tab栏 -->
+<div class="filter-bar-wrapper">
+    <div class="tab-bar">
+        <button class="tab-btn tab-active px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap" data-filter="all">全部</button>
+        <button class="tab-btn px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap" data-filter="拿铁">🥛 拿铁</button>
+        <button class="tab-btn px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap" data-filter="美式">☕ 美式</button>
+    </div>
+</div>
+
+<!-- 食谱列表 -->
+<div class="recipes-container" id="recipesContainer"></div>
+
+<!-- FAB 添加按钮 -->
+<button class="fab" onclick="openAddModal()">
+    <i class="fas fa-plus"></i>
+</button>
+
+<!-- 添加/编辑模态框 -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+        <div class="modal-handle"></div>
+        <div class="modal-title" id="editModalTitle">添加咖啡配方</div>
+
+        <div class="form-group">
+            <label class="form-label">配方图片</label>
+            <div class="image-picker" id="imagePicker" onclick="pickImage()">
+                <i class="fas fa-camera image-picker-icon"></i>
+                <span class="image-picker-text">点击从相册选择</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">咖啡名称</label>
+            <input class="form-input" id="inputName" placeholder="例如：生椰拿铁" maxlength="30">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">分类</label>
+            <div class="segment-group" id="categoryGroup">
+                <div class="segment-btn" data-value="拿铁" onclick="selectCategory(this)">🥛 拿铁系</div>
+                <div class="segment-btn selected" data-value="美式" onclick="selectCategory(this)">☕ 美式系</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">🫘 咖啡豆烘焙度</label>
+            <div class="segment-group" id="roastGroup">
+                <div class="segment-btn" data-value="深烘" onclick="selectRoast(this)">深烘</div>
+                <div class="segment-btn selected" data-value="中深烘" onclick="selectRoast(this)">中深烘</div>
+                <div class="segment-btn" data-value="中烘" onclick="selectRoast(this)">中烘</div>
+                <div class="segment-btn" data-value="浅烘" onclick="selectRoast(this)">浅烘</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">☕ 浓缩咖啡量</label>
+            <div class="input-unit-group">
+                <input type="number" class="form-input" id="inputEspresso" placeholder="30" min="0" step="1">
+                <div class="unit-seg" id="espressoUnitGroup">
+                    <button class="unit-btn selected" data-unit="ml" onclick="selectUnit(this)">ml</button>
+                    <button class="unit-btn" data-unit="oz" onclick="selectUnit(this)">oz</button>
+                    <button class="unit-btn" data-unit="份" onclick="selectUnit(this)">份</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row-2">
+            <div class="form-group">
+                <label class="form-label">🧊 冰块（可选）</label>
+                <input type="number" class="form-input" id="inputIce" placeholder="200g" min="0" step="10">
+            </div>
+            <div class="form-group">
+                <label class="form-label">🍯 糖浆（可选）</label>
+                <input type="text" class="form-input" id="inputSyrup" placeholder="蓝柑糖浆 10ml">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">🥛 其他配料（牛奶、椰乳等）</label>
+            <textarea class="form-textarea" id="inputOther" placeholder="牛奶 180ml&#10;椰乳 40ml&#10;..." rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">📝 制作步骤</label>
+            <textarea class="form-textarea" id="inputSteps" placeholder="1. 在杯中加入冰块&#10;2. 倒入牛奶&#10;3. 加入浓缩咖啡&#10;4. 轻轻搅拌" rows="4"></textarea>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-cancel" id="btnCancel" onclick="closeEditModal()">取消</button>
+            <button class="btn-save" onclick="saveRecipe()">保存</button>
+        </div>
+
+        <button class="btn-delete" id="btnDelete" style="display:none;" onclick="deleteCurrentRecipe()">
+            <i class="fas fa-trash-alt"></i> 删除此配方
+        </button>
+    </div>
+</div>
+
+<!-- 详情模态框 -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-content" id="detailContent"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+    // ==================== 全局变量 ====================
+    let recipes = [];
+    let editingId = null;
+    let tempImageData = null;
+    let selectedCategory = '美式';
+    let selectedRoast = '中深烘';
+    let selectedUnit = 'ml';
+    let currentFilter = 'all';
+
+    // ==================== 初始化 ====================
+    function init() {
+        loadRecipes();
+    }
+
+    function loadRecipes() {
+        try {
+            const data = localStorage.getItem('coffeeRecipes');
+            recipes = data ? JSON.parse(data) : [];
+        } catch (e) {
+            recipes = [];
+        }
+        renderRecipes();
+    }
+
+    function saveRecipes() {
+        localStorage.setItem('coffeeRecipes', JSON.stringify(recipes));
+    }
+
+    // ==================== 渲染 ====================
+    function renderRecipes() {
+        const container = document.getElementById('recipesContainer');
+
+        // 按分类筛选
+        const filtered = currentFilter === 'all'
+            ? recipes
+            : recipes.filter(r => r.category === currentFilter);
+
+        document.getElementById('recipeCount').textContent = filtered.length + '/' + recipes.length + ' 个配方';
+
+        if (filtered.length === 0) {
+            container.className = 'recipes-container empty';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📖</div>
+                    <div class="empty-state-title">${currentFilter === 'all' ? '还没有咖啡配方' : currentFilter + '系暂无配方'}</div>
+                    <div class="empty-state-desc">${currentFilter === 'all' ? '点击右下角 + 号<br>添加你的第一份咖啡配方' : '切换分类或添加新配方'}</div>
+                </div>
+            `;
+            return;
+        }
+
+        container.className = 'recipes-container';
+        container.innerHTML = filtered.map((r, index) => `
+            <div class="recipe-card" onclick="openDetailModal(${recipes.indexOf(r)})">
+                <div class="recipe-image">
+                    ${r.image ? `<img src="${r.image}" alt="${r.name}">` : '<i class="fas fa-mug-hot"></i>'}
+                </div>
+                <div class="recipe-info">
+                    <div class="recipe-name">${escapeHtml(r.name)}</div>
+                    <div class="recipe-meta">
+                        <span class="recipe-tag ${r.category === '拿铁' ? '' : 'hot'}">${escapeHtml(r.category || '美式')}</span>
+                        <span class="recipe-tag" style="background:rgba(141,110,99,0.08);color:#8D6E63;">${escapeHtml(r.roast || '')}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ==================== 图片选择 ====================
+    function pickImage() {
+        if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.openGallery) {
+            window.AndroidBridge.openGallery();
+        } else {
+            // 降级：使用 file input（桌面调试）
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    tempImageData = ev.target.result;
+                    updateImagePicker();
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+    }
+
+    // AndroidBridge 回调
+    function onGalleryImage(base64) {
+        tempImageData = 'data:image/jpeg;base64,' + base64;
+        updateImagePicker();
+    }
+
+    function updateImagePicker() {
+        const picker = document.getElementById('imagePicker');
+        if (tempImageData) {
+            picker.classList.add('has-image');
+            picker.innerHTML = `
+                <img src="${tempImageData}" alt="preview">
+                <i class="fas fa-camera image-picker-icon"></i>
+                <span class="image-picker-text">点击更换图片</span>
+            `;
+        } else {
+            picker.classList.remove('has-image');
+            picker.innerHTML = `
+                <i class="fas fa-camera image-picker-icon"></i>
+                <span class="image-picker-text">点击从相册选择</span>
+            `;
+        }
+    }
+
+    // ==================== 分段选择 ====================
+    function selectCategory(el) {
+        document.querySelectorAll('#categoryGroup .segment-btn').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedCategory = el.dataset.value;
+    }
+
+    function selectRoast(el) {
+        document.querySelectorAll('#roastGroup .segment-btn').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedRoast = el.dataset.value;
+    }
+
+    function selectUnit(el) {
+        document.querySelectorAll('#espressoUnitGroup .unit-btn').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedUnit = el.dataset.unit;
+    }
+
+    // ==================== 添加/编辑模态框 ====================
+    function openAddModal() {
+        editingId = null;
+        tempImageData = null;
+        selectedCategory = '美式';
+        selectedRoast = '中深烘';
+        selectedUnit = 'ml';
+
+        document.getElementById('editModalTitle').textContent = '添加咖啡配方';
+        document.getElementById('inputName').value = '';
+        document.getElementById('inputEspresso').value = '';
+        document.getElementById('inputIce').value = '';
+        document.getElementById('inputSyrup').value = '';
+        document.getElementById('inputOther').value = '';
+        document.getElementById('inputSteps').value = '';
+        document.getElementById('btnDelete').style.display = 'none';
+
+        resetSegmentGroups();
+        updateImagePicker();
+        showModal('editModal');
+    }
+
+    function openEditModal(index) {
+        const recipe = recipes[index];
+        editingId = index;
+        tempImageData = recipe.image || null;
+        selectedCategory = recipe.category || '美式';
+        selectedRoast = recipe.roast || '中深烘';
+        selectedUnit = recipe.espressoUnit || 'ml';
+
+        document.getElementById('editModalTitle').textContent = '编辑咖啡配方';
+        document.getElementById('inputName').value = recipe.name || '';
+        document.getElementById('inputEspresso').value = recipe.espresso || '';
+        document.getElementById('inputIce').value = recipe.ice || '';
+        document.getElementById('inputSyrup').value = recipe.syrup || '';
+        document.getElementById('inputOther').value = recipe.other || '';
+        document.getElementById('inputSteps').value = recipe.steps || '';
+        document.getElementById('btnDelete').style.display = 'block';
+
+        resetSegmentGroups();
+        updateImagePicker();
+        showModal('editModal');
+    }
+
+    function resetSegmentGroups() {
+        document.querySelectorAll('#categoryGroup .segment-btn').forEach(b => {
+            b.classList.toggle('selected', b.dataset.value === selectedCategory);
+        });
+        document.querySelectorAll('#roastGroup .segment-btn').forEach(b => {
+            b.classList.toggle('selected', b.dataset.value === selectedRoast);
+        });
+        document.querySelectorAll('#espressoUnitGroup .unit-btn').forEach(b => {
+            b.classList.toggle('selected', b.dataset.unit === selectedUnit);
+        });
+    }
+
+    function closeEditModal() {
+        hideModal('editModal');
+    }
+
+    function saveRecipe() {
+        const name = document.getElementById('inputName').value.trim();
+        if (!name) {
+            showToast('请输入咖啡名称');
+            return;
+        }
+
+        const recipe = {
+            id: editingId !== null ? recipes[editingId].id : Date.now(),
+            name: name,
+            image: tempImageData || '',
+            category: selectedCategory,
+            roast: selectedRoast,
+            espresso: document.getElementById('inputEspresso').value,
+            espressoUnit: selectedUnit,
+            ice: document.getElementById('inputIce').value,
+            syrup: document.getElementById('inputSyrup').value.trim(),
+            other: document.getElementById('inputOther').value.trim(),
+            steps: document.getElementById('inputSteps').value.trim(),
+            createdAt: editingId !== null ? recipes[editingId].createdAt : new Date().toISOString().split('T')[0]
+        };
+
+        if (editingId !== null) {
+            recipes[editingId] = recipe;
+        } else {
+            recipes.unshift(recipe);
+        }
+
+        saveRecipes();
+        hideModal('editModal');
+        renderRecipes();
+        showToast(editingId !== null ? '配方已更新' : '配方已添加');
+    }
+
+    function deleteCurrentRecipe() {
+        if (editingId === null) return;
+        if (!confirm('确定要删除「' + recipes[editingId].name + '」吗？')) return;
+
+        recipes.splice(editingId, 1);
+        saveRecipes();
+        hideModal('editModal');
+        renderRecipes();
+        showToast('配方已删除');
+    }
+
+    // ==================== 详情模态框 ====================
+    function openDetailModal(index) {
+        const recipe = recipes[index];
+        const content = document.getElementById('detailContent');
+
+        // 拼配参数行
+        let paramsHtml = '';
+        if (recipe.roast) paramsHtml += `<span class="recipe-tag">🫘 ${escapeHtml(recipe.roast)}</span>`;
+        if (recipe.espresso) paramsHtml += `<span class="recipe-tag">☕ ${escapeHtml(recipe.espresso)}${escapeHtml(recipe.espressoUnit || 'ml')}</span>`;
+        if (recipe.ice) paramsHtml += `<span class="recipe-tag ice">🧊 ${escapeHtml(recipe.ice)}g</span>`;
+        if (recipe.syrup) paramsHtml += `<span class="recipe-tag hot">🍯 ${escapeHtml(recipe.syrup)}</span>`;
+
+        content.innerHTML = `
+            <div class="modal-handle"></div>
+            ${recipe.image ? `<img class="detail-image" src="${recipe.image}" alt="${recipe.name}">` : `
+            <div class="detail-image" style="display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-mug-hot" style="font-size:48px;color:#BCAAA4;"></i>
+            </div>`}
+            <div class="detail-name">${escapeHtml(recipe.name)}</div>
+            <div class="detail-tags">
+                <span class="recipe-tag ${recipe.category === '拿铁' ? '' : 'hot'}">${escapeHtml(recipe.category || '美式')}</span>
+                ${paramsHtml}
+            </div>
+            ${recipe.other ? `
+            <div class="detail-section">
+                <div class="detail-section-title">🥛 其他配料</div>
+                <div class="detail-section-content">${escapeHtml(recipe.other)}</div>
+            </div>` : ''}
+            ${recipe.steps ? `
+            <div class="detail-section">
+                <div class="detail-section-title">📝 制作步骤</div>
+                <div class="detail-section-content">${escapeHtml(recipe.steps)}</div>
+            </div>` : ''}
+            <div class="detail-meta">创建于 ${recipe.createdAt}</div>
+            <div class="btn-row">
+                <button class="btn-cancel" onclick="hideModal('detailModal')">关闭</button>
+                <button class="btn-save" onclick="hideModal('detailModal');openEditModal(${index})">编辑</button>
+            </div>
+        `;
+
+        showModal('detailModal');
+    }
+
+    // ==================== 模态框工具 ====================
+    function showModal(id) {
+        document.getElementById(id).classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hideModal(id) {
+        document.getElementById(id).classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    // ==================== 返回 ====================
+    function goBack() {
+        const cover = document.getElementById('transitionCover');
+        cover.classList.add('active');
+        setTimeout(() => {
+            if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.loadPage) {
+                window.AndroidBridge.loadPage('main');
+            } else {
+                window.history.back();
+            }
+        }, 300);
+    }
+
+    // ==================== Toast ====================
+    let toastTimer;
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2000);
+    }
+
+    // ==================== 启动 ====================
+    document.addEventListener('DOMContentLoaded', () => {
+        init();
+
+        // 筛选 Tab 点击事件
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+                this.classList.add('tab-active');
+                currentFilter = this.dataset.filter;
+                renderRecipes();
+            });
+        });
+
+        // 页面加载完成后显示
+        requestAnimationFrame(() => {
+            document.body.classList.add('loaded');
+            // 隐藏过渡遮罩
+            setTimeout(() => {
+                const cover = document.getElementById('transitionCover');
+                if (cover) cover.classList.remove('active');
+            }, 400);
+        });
+    });
+
+    // ==================== 点击模态框遮罩关闭 ====================
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideModal(this.id);
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

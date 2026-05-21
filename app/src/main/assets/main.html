@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CFTI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,6 +13,11 @@
             --bg-main: #FDFCFA;
             --text-primary: #3E2723;
             --accent: #8D6E63;
+            --glass-bg: rgba(255, 255, 255, 0.35);
+            --glass-bg-hover: rgba(255, 255, 255, 0.48);
+            --glass-border: rgba(255, 255, 255, 0.55);
+            --glass-blur: 30px;
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
             --transition-duration: 0.4s;
             --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -24,7 +29,7 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-main);
+            background: linear-gradient(160deg, #FFF8F0 0%, #E8DDD3 35%, #F2EAE0 55%, #FFF5ED 75%, #EDE0D4 100%);
             color: var(--text-primary);
             margin: 0;
             padding: 0;
@@ -32,6 +37,22 @@
             height: 100vh;
             position: fixed;
             width: 100%;
+        }
+
+        /* ==================== 页面切换过渡遮罩 ==================== */
+        #transitionCover {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: var(--bg-main);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #transitionCover.active {
+            opacity: 1;
+            pointer-events: all;
         }
 
         /* ==================== 丝滑页面切换核心 ==================== */
@@ -55,7 +76,7 @@
             transform: translateX(100%);
             transition: all var(--transition-duration) var(--transition-easing);
             z-index: 1;
-            background-color: var(--bg-main);
+            background: transparent;
         }
 
         .page.active {
@@ -77,9 +98,11 @@
             left: 0;
             right: 0;
             height: 80px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(34px);
+            -webkit-backdrop-filter: blur(34px);
+            border-top: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.04);
             display: flex;
             justify-content: space-around;
             align-items: center;
@@ -128,8 +151,10 @@
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent) 0%, #4E342E 100%);
-            box-shadow: 0 6px 20px rgba(141, 110, 99, 0.4);
+            background: linear-gradient(135deg, rgba(141, 110, 99, 0.88) 0%, rgba(78, 52, 46, 0.88) 100%);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 8px 32px rgba(141, 110, 99, 0.4), 0 0 0 1px rgba(255,255,255,0.25) inset;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -137,12 +162,12 @@
             font-size: 24px;
             cursor: pointer;
             z-index: 999;
-            transition: transform 0.3s ease, box-shadow: 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .fab:hover {
             transform: scale(1.1);
-            box-shadow: 0 8px 25px rgba(141, 110, 99, 0.5);
+            box-shadow: 0 12px 40px rgba(141, 110, 99, 0.55), 0 0 0 1px rgba(255,255,255,0.3) inset;
         }
 
         /* ==================== 贴纸样式 ==================== */
@@ -195,14 +220,16 @@
             bottom: -35px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.55);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             padding: 6px 10px;
             border-radius: 16px;
             font-size: 10px;
             font-weight: 600;
             white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             z-index: 100;
         }
 
@@ -252,7 +279,9 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             z-index: 2000;
             display: none;
             align-items: center;
@@ -267,11 +296,15 @@
         }
 
         .modal-content {
-            background: white;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(34px);
+            -webkit-backdrop-filter: blur(34px);
             width: 90%;
             max-width: 400px;
             border-radius: 24px;
             overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
             transform: scale(0.9);
             transition: transform 0.3s ease;
         }
@@ -283,7 +316,9 @@
         .name-modal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             z-index: 3000;
             display: none;
             align-items: center;
@@ -298,11 +333,15 @@
         }
 
         .name-modal-content {
-            background: white;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(34px);
+            -webkit-backdrop-filter: blur(34px);
             width: 90%;
             max-width: 350px;
             border-radius: 20px;
             padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
             transform: scale(0.9);
             transition: transform 0.3s ease;
         }
@@ -315,7 +354,9 @@
         .delete-modal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             z-index: 4000;
             display: none;
             align-items: center;
@@ -330,11 +371,15 @@
         }
 
         .delete-modal-content {
-            background: white;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(34px);
+            -webkit-backdrop-filter: blur(34px);
             width: 90%;
             max-width: 350px;
             border-radius: 20px;
             padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
             transform: scale(0.9);
             transition: transform 0.3s ease;
         }
@@ -368,18 +413,22 @@
 
         /* ==================== 咖啡记录项 ==================== */
         .coffee-record-item {
-            background: white;
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
             border-radius: 16px;
             padding: 12px;
             margin-bottom: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.03);
             transition: all 0.3s ease;
             position: relative;
         }
 
         .coffee-record-item:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 12px 36px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
         }
 
         .delete-record-btn {
@@ -475,15 +524,153 @@
             pointer-events: none;
         }
 
+        /* ==================== 毛玻璃卡片 ==================== */
+        section .bg-white,
+        .coffee-record-item.bg-white {
+            background: rgba(255, 255, 255, 0.38) !important;
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.03);
+        }
+
         /* ==================== 统计页Tab ==================== */
-        .tab-active {
-            background: var(--accent) !important;
+        .tab-bar {
+            display: inline-flex;
+            gap: 4px;
+            padding: 4px;
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        }
+
+        .tab-btn {
+            background: transparent;
+            backdrop-filter: none;
+            border: none !important;
+            color: #8D6E63;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .tab-btn.tab-active {
+            background: rgba(141, 110, 99, 0.88) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             color: white !important;
             font-weight: 700 !important;
+            box-shadow: 0 2px 8px rgba(141, 110, 99, 0.25);
+            transform: none !important;
+        }
+
+        .tab-btn:active {
+            transform: scale(0.96) !important;
+        }
+
+        /* ==================== 统计页渐入交错动画 ==================== */
+        .stats-stagger {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stats-stagger.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ==================== 统计页指标卡片 ==================== */
+        .stats-metric-card {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            padding: 18px 14px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        background 0.35s ease;
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-metric-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .stats-metric-card:active {
+            transform: scale(0.96);
+            background: rgba(255, 255, 255, 0.48);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        }
+
+        .stats-metric-card.visible::after {
+            opacity: 1;
+        }
+
+        /* ==================== 统计页图表卡片 ==================== */
+        .stats-chart-card {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stats-chart-card:active {
+            transform: scale(0.98);
+        }
+
+        /* ==================== 数字跳动动画 ==================== */
+        @keyframes countIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .stats-number {
+            display: inline-block;
+            animation: countIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* ==================== 统计页标题渐入 ==================== */
+        .stats-title-enter {
+            opacity: 0;
+            transform: translateX(-16px);
+            transition: opacity 0.5s ease 0.15s, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.15s;
+        }
+
+        .stats-title-enter.visible {
+            opacity: 1;
+            transform: translateX(0);
         }
     </style>
 </head>
 <body>
+<!-- 页面过渡遮罩 -->
+<div id="transitionCover"></div>
 <!-- 页面容器 - 丝滑动画核心 -->
 <div class="pages-container">
     <!-- 咖啡日历页 -->
@@ -529,36 +716,50 @@
     <div id="statsPage" class="page">
         <div class="page-content">
             <!-- 时间筛选 -->
-            <section class="fade-in-up" style="animation-delay: 0.1s;">
-                <div class="flex space-x-2 overflow-x-auto pb-2">
-                    <button class="tab-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white" data-period="all">全部</button>
-                    <button class="tab-btn tab-active px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap" data-period="week">本周</button>
-                    <button class="tab-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white" data-period="month">本月</button>
-                    <button class="tab-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white" data-period="year">本年</button>
+            <section class="stats-stagger" style="transition-delay: 0.05s;">
+                <div class="flex overflow-x-auto pb-2">
+                    <div class="tab-bar flex space-x-1">
+                        <button class="tab-btn px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap" data-period="all">全部</button>
+                        <button class="tab-btn tab-active px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap" data-period="week">本周</button>
+                        <button class="tab-btn px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap" data-period="month">本月</button>
+                        <button class="tab-btn px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap" data-period="year">本年</button>
+                    </div>
                 </div>
             </section>
 
             <!-- 关键指标 -->
-            <section class="mt-6 fade-in-up" style="animation-delay: 0.2s;">
-                <h1 class="text-3xl font-bold mb-6">数据看板</h1>
-                <div class="grid grid-cols-2 gap-4" id="statsMetrics">
-                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-total">0</div><div class="text-sm text-gray-500">咖啡数量</div></div>
-                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-days">0</div><div class="text-sm text-gray-500">记录天数</div></div>
-                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-top">--</div><div class="text-sm text-gray-500">最爱咖啡</div></div>
-                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-avg">0</div><div class="text-sm text-gray-500">日均杯数</div></div>
+            <section class="mt-6 stats-stagger" style="transition-delay: 0.12s;">
+                <h1 class="text-3xl font-bold mb-5 stats-title-enter">数据看板</h1>
+                <div class="grid grid-cols-2 gap-3" id="statsMetrics">
+                    <div class="stats-metric-card">
+                        <div class="text-xs text-gray-400 mb-1.5 font-medium">☕ 咖啡数量</div>
+                        <div class="text-[28px] font-black stats-total text-[#3E2723]">0</div>
+                    </div>
+                    <div class="stats-metric-card">
+                        <div class="text-xs text-gray-400 mb-1.5 font-medium">📅 记录天数</div>
+                        <div class="text-[28px] font-black stats-days text-[#3E2723]">0</div>
+                    </div>
+                    <div class="stats-metric-card">
+                        <div class="text-xs text-gray-400 mb-1.5 font-medium">❤️ 最爱咖啡</div>
+                        <div class="text-[28px] font-black stats-top text-[#3E2723]">--</div>
+                    </div>
+                    <div class="stats-metric-card">
+                        <div class="text-xs text-gray-400 mb-1.5 font-medium">📊 日均杯数</div>
+                        <div class="text-[28px] font-black stats-avg text-[#3E2723]">0</div>
+                    </div>
                 </div>
             </section>
 
             <!-- 温度 & 糖度分布 -->
-            <section class="mt-6 fade-in-up" style="animation-delay: 0.3s;">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white rounded-3xl p-5 shadow-sm">
-                        <h3 class="text-sm font-bold text-gray-500 mb-3">🌡 温度偏好</h3>
+            <section class="mt-5 stats-stagger" style="transition-delay: 0.20s;">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="stats-chart-card">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">🌡 温度偏好</h3>
                         <div class="h-36"><canvas id="tempChart"></canvas></div>
                         <div id="tempLegend" class="flex justify-center gap-3 mt-2 text-xs text-gray-500"></div>
                     </div>
-                    <div class="bg-white rounded-3xl p-5 shadow-sm">
-                        <h3 class="text-sm font-bold text-gray-500 mb-3">🍬 糖度选择</h3>
+                    <div class="stats-chart-card">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">🍬 糖度选择</h3>
                         <div class="h-36"><canvas id="sugarChart"></canvas></div>
                         <div id="sugarLegend" class="flex justify-center gap-3 mt-2 text-xs text-gray-500"></div>
                     </div>
@@ -566,28 +767,28 @@
             </section>
 
             <!-- 咖啡偏好 TOP5 -->
-            <section id="statsPreference" class="bg-white rounded-3xl p-5 shadow-sm mt-6 fade-in-up" style="animation-delay: 0.35s;">
-                <h2 class="text-lg font-bold mb-4">🏆 咖啡偏好 TOP5</h2>
+            <section id="statsPreference" class="stats-chart-card mt-5 stats-stagger" style="transition-delay: 0.28s;">
+                <h2 class="text-base font-bold mb-4">🏆 咖啡偏好 TOP5</h2>
                 <div id="preferenceList" class="space-y-4"></div>
             </section>
 
             <!-- 周间饮用节律 -->
-            <section id="statsWeekday" class="bg-white rounded-3xl p-5 shadow-sm mt-6 fade-in-up" style="animation-delay: 0.40s;">
-                <h2 class="text-lg font-bold mb-4">📅 一周饮用节律</h2>
+            <section id="statsWeekday" class="stats-chart-card mt-5 stats-stagger" style="transition-delay: 0.36s;">
+                <h2 class="text-base font-bold mb-4">📅 一周饮用节律</h2>
                 <div class="h-40"><canvas id="weekdayChart"></canvas></div>
             </section>
 
             <!-- CFTI 咖啡人格 -->
-            <section id="cftiSection" class="mt-6 fade-in-up" style="animation-delay: 0.45s;">
+            <section id="cftiSection" class="mt-5 stats-stagger" style="transition-delay: 0.44s;">
                 <h2 class="text-xl font-bold mb-4">🧬 你的咖啡人格</h2>
-                <div id="cftiCard" class="bg-white rounded-[2rem] shadow-sm p-6">
+                <div id="cftiCard" class="stats-chart-card" style="border-radius: 24px; padding: 24px;">
                     <div class="text-center mb-6">
                         <div id="cftiCode" class="text-6xl font-black text-[#8D6E63] tracking-widest mb-2">----</div>
                         <div id="cftiName" class="text-xl font-bold text-[#4E3423] mb-1">数据收集中</div>
                         <p id="cftiDesc" class="text-sm text-gray-600 px-4">记录满7天后解锁你的专属咖啡人格</p>
                     </div>
                     <div class="h-48 mb-4"><canvas id="cftiRadar"></canvas></div>
-                    <button onclick="generateShareImage()" class="w-full bg-[#8D6E63] text-white py-3 rounded-2xl font-bold text-lg flex items-center justify-center gap-2">
+                    <button onclick="generateShareImage()" class="w-full bg-[#8D6E63] text-white py-3 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-[#8D6E63]/20 transition-all active:scale-95">
                         <i class="fas fa-camera"></i> 生成人格海报
                     </button>
                 </div>
@@ -610,6 +811,10 @@
     <div class="nav-item" onclick="switchPage('statsPage')">
         <div class="nav-icon"><i class="fas fa-chart-bar"></i></div>
         <div class="nav-text">统计</div>
+    </div>
+    <div class="nav-item" onclick="openMenuPage()">
+        <div class="nav-icon"><i class="fas fa-book-open"></i></div>
+        <div class="nav-text">菜单</div>
     </div>
 </div>
 
@@ -712,11 +917,67 @@
             document.getElementById('fabBtn').style.display = 'none';
             // 切换到统计页时刷新所有数据
             updateStatsPage();
+            // 触发交错入场动画
+            triggerStatsAnimation();
             if (hasEnoughRecords()) {
                 setTimeout(initRadarChart, 200);
             }
         }
     }
+
+    function triggerStatsAnimation() {
+        const elements = document.querySelectorAll('#statsPage .stats-stagger');
+        // 先重置
+        elements.forEach(el => {
+            el.classList.remove('visible');
+        });
+        // 重置指标数字为 0，触发重新计数
+        const totalEl = document.querySelector('.stats-total');
+        const daysEl = document.querySelector('.stats-days');
+        if (totalEl) totalEl.textContent = '0';
+        if (daysEl) daysEl.textContent = '0';
+        // 强制回流后添加 visible
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                elements.forEach(el => {
+                    el.classList.add('visible');
+                });
+                // 指标卡片加微光效果
+                document.querySelectorAll('#statsPage .stats-metric-card').forEach(el => {
+                    el.classList.add('visible');
+                });
+                // 标题渐入
+                document.querySelectorAll('#statsPage .stats-title-enter').forEach(el => {
+                    el.classList.add('visible');
+                });
+                // 延迟触发数字跳动
+                setTimeout(() => {
+                    const records = filterRecordsByPeriod(currentPeriod);
+                    updateStatsMetrics(records);
+                }, 150);
+            });
+        });
+    }
+
+    function openMenuPage() {
+        const cover = document.getElementById('transitionCover');
+        cover.classList.add('active');
+        setTimeout(() => {
+            if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.loadPage) {
+                window.AndroidBridge.loadPage('menu');
+            } else {
+                window.location.href = 'menu.html';
+            }
+        }, 300);
+    }
+
+    // 页面显示时自动收起过渡遮罩
+    window.addEventListener('pageshow', () => {
+        const cover = document.getElementById('transitionCover');
+        if (cover) {
+            setTimeout(() => cover.classList.remove('active'), 100);
+        }
+    });
 
     // ==================== 日历（动态日期） ====================
     let todayDay = 1;           // 今天的日期号
@@ -1494,10 +1755,38 @@
             avgPerDay = (total / uniqueDays).toFixed(1);
         }
 
-        document.querySelector('.stats-total').textContent = total + '杯';
-        document.querySelector('.stats-days').textContent = uniqueDays + '天';
+        // 数字跳动动画
+        animateValue('.stats-total', total);
+        animateValue('.stats-days', uniqueDays);
         document.querySelector('.stats-top').textContent = topName;
         document.querySelector('.stats-avg').textContent = avgPerDay;
+    }
+
+    function animateValue(selector, endValue) {
+        const el = document.querySelector(selector);
+        if (!el) return;
+        const currentText = el.textContent.replace(/[^0-9.]/g, '');
+        const start = parseFloat(currentText) || 0;
+        const end = parseFloat(endValue) || 0;
+        if (start === end) return;
+
+        const duration = 400;
+        const startTime = performance.now();
+
+        function step(now) {
+            const progress = Math.min((now - startTime) / duration, 1);
+            // easeOutCubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = Math.round((start + (end - start) * eased));
+            el.textContent = current;
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            } else {
+                el.textContent = end;
+            }
+        }
+
+        requestAnimationFrame(step);
     }
 
     // 更新咖啡偏好 TOP5
