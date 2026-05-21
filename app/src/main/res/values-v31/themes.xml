@@ -1,0 +1,39 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Android 12+ 主题：隐藏系统启动图标 -->
+    <style name="Theme.CoffeeDiary" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- 品牌色 -->
+        <item name="colorPrimary">@color/black</item>
+        <item name="colorPrimaryVariant">@color/black</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- 强调色 -->
+        <item name="colorSecondary">#8D6E63</item>
+        <item name="colorSecondaryVariant">#8D6E63</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <!-- 状态栏 -->
+        <item name="android:statusBarColor">@color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- 导航栏 -->
+        <item name="android:navigationBarColor">@color/black</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- 窗口背景 -->
+        <item name="android:windowBackground">@color/black</item>
+
+        <!-- 去除标题 -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- Android 12+ 系统启动屏：不显示图标 -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent_splash</item>
+        <item name="android:windowSplashScreenBackground">@color/black</item>
+    </style>
+
+    <!-- 无ActionBar的子主题 -->
+    <style name="Theme.CoffeeDiary.NoActionBar" parent="Theme.CoffeeDiary">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+</resources>

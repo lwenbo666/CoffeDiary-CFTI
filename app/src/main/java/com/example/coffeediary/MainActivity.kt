@@ -1,0 +1,235 @@
+package com.example.coffeediary
+
+import android.Manifest
+import android.content.ContentValues
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Build
+import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Base64
+import android.view.View
+import android.view.WindowManager
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
+import org.json.JSONObject
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var webView: WebView
+    private lateinit var splashOverlay: SplashOverlayView
+    private lateinit var db: AppDatabase
+    private var isPageLoaded = false
+    private var isSplashDone = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // 初始化 Room 数据库
+        db = AppDatabase.getInstance(this)
+
+        webView = findViewById(R.id.webView)
+        splashOverlay = findViewById(R.id.splashOverlay)
+
+        // 配置 WebView
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = true
+            mediaPlaybackRequiresUserGesture = false
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                isPageLoaded = true
+                tryDismissSplash()
+            }
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val resources = request.resources
+                val grantResults = resources.mapNotNull { resource ->
+                    if (resource == PermissionRequest.RESOURCE_VIDEO_CAPTURE ||
+                        resource == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                    ) {
+                        resource
+                    } else {
+                        null
+                    }
+                }.toTypedArray()
+                if (grantResults.isNotEmpty()) {
+                    request.grant(grantResults)
+                }
+            }
+        }
+
+        webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
+
+        // 启动启动动画
+        splashOverlay.startAnimation()
+
+        // 启动动画结束时的回调
+        splashOverlay.animator.addListener(object : android.animation.Animator.AnimatorListener {
+            override fun onAnimationStart(a: android.animation.Animator) {}
+            override fun onAnimationEnd(a: android.animation.Animator) {
+                isSplashDone = true
+                tryDismissSplash()
+            }
+            override fun onAnimationCancel(a: android.animation.Animator) {}
+            override fun onAnimationRepeat(a: android.animation.Animator) {}
+        })
+
+        // 后台加载 HTML
+        webView.loadUrl("file:///android_asset/main.html")
+
+        // 运行时申请摄像头权限
+        requestCameraPermission()
+    }
+
+    /**
+     * 当页面加载完成且启动动画结束时，关闭启动屏
+     */
+    private fun tryDismissSplash() {
+        if (isPageLoaded && isSplashDone) {
+            // Splash 结束后恢复白色主题的系统栏
+            window.statusBarColor = ContextCompat.getColor(this, R.color.white)
+            window.navigationBarColor = ContextCompat.getColor(this, R.color.white)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.setSystemBarsAppearance(
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility =
+                    window.decorView.systemUiVisibility or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            }
+
+            splashOverlay.dismiss {
+                webView.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun requestCameraPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                REQUEST_CAMERA
+            )
+        }
+    }
+
+    override fun onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    inner class AndroidBridge {
+        @android.webkit.JavascriptInterface
+        fun loadRecords(): String {
+            return runBlocking {
+                val records = db.coffeeRecordDao().getAllRecords()
+                JSONArray().apply {
+                    records.forEach { r ->
+                        put(JSONObject().apply {
+                            put("id", r.id)
+                            put("name", r.name)
+                            put("date", r.date)
+                            put("photo", r.photo)
+                            put("temp", r.temp)
+                            put("sugar", r.sugar)
+                        })
+                    }
+                }.toString()
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun saveRecord(json: String): Long {
+            val obj = JSONObject(json)
+            val record = CoffeeRecord(
+                name = obj.getString("name"),
+                date = obj.getString("date"),
+                photo = obj.optString("photo", ""),
+                temp = obj.optString("temp", "ice"),
+                sugar = obj.optString("sugar", "half")
+            )
+            return runBlocking { db.coffeeRecordDao().insertRecord(record) }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun deleteRecord(id: Long) {
+            runBlocking { db.coffeeRecordDao().deleteRecord(id) }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun deleteRecordsByName(name: String) {
+            runBlocking { db.coffeeRecordDao().deleteRecordsByName(name) }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun saveImage(base64: String) {
+            saveImageToGallery(base64)
+        }
+    }
+
+    private fun saveImageToGallery(base64: String) {
+        try {
+            val bytes = Base64.decode(base64.split(",")[1], Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            val resolver = contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "CFTI_${System.currentTimeMillis()}.png")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/CoffeeDiary")
+            }
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            val outputStream = resolver.openOutputStream(uri!!)
+            outputStream?.use { stream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            }
+            runOnUiThread {
+                Toast.makeText(this, "图片已保存到相册", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            runOnUiThread {
+                Toast.makeText(this, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    companion object {
+        private const val REQUEST_CAMERA = 100
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CAMERA) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "摄像头权限已授予", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "需要摄像头权限才能拍照", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+}

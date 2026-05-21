@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CFTI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #FDFCFA;
+            --text-primary: #3E2723;
+            --accent: #8D6E63;
+            --transition-duration: 0.4s;
+            --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            height: 100vh;
+            position: fixed;
+            width: 100%;
+        }
+
+        /* ==================== 丝滑页面切换核心 ==================== */
+        .pages-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(100%);
+            transition: all var(--transition-duration) var(--transition-easing);
+            z-index: 1;
+            background-color: var(--bg-main);
+        }
+
+        .page.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            z-index: 2;
+        }
+
+        .page.prev {
+            transform: translateX(-100%);
+            z-index: 1;
+        }
+
+        /* ==================== 底部导航栏 ==================== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            color: #8D6E63;
+            min-width: 60px;
+        }
+
+        .nav-item.active {
+            background: rgba(141, 110, 99, 0.1);
+            color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .nav-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-item.active .nav-icon {
+            transform: scale(1.1);
+        }
+
+        .nav-text {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* ==================== 拍照按钮 ==================== */
+        .fab {
+            position: fixed;
+            bottom: 100px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, #4E342E 100%);
+            box-shadow: 0 6px 20px rgba(141, 110, 99, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 999;
+            transition: transform 0.3s ease, box-shadow: 0.3s ease;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(141, 110, 99, 0.5);
+        }
+
+        /* ==================== 贴纸样式 ==================== */
+        .sticker-wrapper {
+            animation: float 4s ease-in-out infinite;
+            transform-origin: center center;
+            transition: transform 0.3s ease, z-index 0.3s ease;
+            cursor: pointer;
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(var(--rotate)); }
+            50% { transform: translateY(-8px) rotate(var(--rotate)); }
+        }
+
+        .sticker-wrapper.scaled {
+            animation: none;
+            transform: scale(3.48) rotate(var(--rotate));
+            z-index: 50;
+        }
+
+        .sticker-img {
+            border-radius: 16px;
+            border: 4px solid white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            object-fit: cover;
+            aspect-ratio: 5 / 6;
+            width: 192%;
+            height: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .name-tag {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 6px 10px;
+            border-radius: 16px;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .sticker-wrapper.scaled .name-tag {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ==================== 删除按钮 ==================== */
+        .delete-btn {
+            display: none;
+        }
+
+        /* ==================== 日历网格 ==================== */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 14px;
+            position: relative;
+            background: transparent;
+        }
+
+        .calendar-day.empty {
+            color: #ccc;
+        }
+
+        .calendar-day.past {
+            color: #c4b5a8;
+        }
+
+        .calendar-day.today {
+            font-weight: bold;
+            color: var(--accent);
+            background: rgba(141, 110, 99, 0.1);
+        }
+
+        /* ==================== 模态框 ==================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 24px;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .name-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .name-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .name-modal-content {
+            background: white;
+            width: 90%;
+            max-width: 350px;
+            border-radius: 20px;
+            padding: 24px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .name-modal.show .name-modal-content {
+            transform: scale(1);
+        }
+
+        /* ==================== 删除确认模态框 ==================== */
+        .delete-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 4000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .delete-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .delete-modal-content {
+            background: white;
+            width: 90%;
+            max-width: 350px;
+            border-radius: 20px;
+            padding: 24px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .delete-modal.show .delete-modal-content {
+            transform: scale(1);
+        }
+
+        /* ==================== 页面内容 ==================== */
+        .page-content {
+            padding: 6rem 1.5rem 8rem;
+            min-height: 100vh;
+        }
+
+        /* ==================== 淡入动画 ==================== */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+        }
+
+        /* ==================== 咖啡记录项 ==================== */
+        .coffee-record-item {
+            background: white;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .coffee-record-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .delete-record-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.1);
+            color: rgb(220, 38, 38);
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .delete-record-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* ==================== 空状态提示 ==================== */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8D6E63;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-desc {
+            font-size: 14px;
+            color: #999;
+            line-height: 1.5;
+        }
+
+        /* ==================== 常喝咖啡贴纸 ==================== */
+        .coffee-sticker {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        /* ==================== 视频播放器 - 隐藏播放按钮 ==================== */
+        video::-webkit-media-controls {
+            display: none !important;
+        }
+        video::-webkit-media-controls-start-playback-button,
+        video::-webkit-media-controls-play-button,
+        video::-webkit-media-controls-overlay-play-button,
+        video::-webkit-media-controls-overlay-enclosure,
+        video::-webkit-media-controls-enclosure {
+            display: none !important;
+        }
+
+        #video {
+            background: #000 !important;
+        }
+
+        /* ==================== 温度/糖度选择按钮 ==================== */
+        .temp-btn.active, .sugar-btn.active {
+            background: rgba(141, 110, 99, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* ==================== 统计页Tab ==================== */
+        .tab-active {
+            background: var(--accent) !important;
+            color: white !important;
+            font-weight: 700 !important;
+        }
+    </style>
+</head>
+<body>
+<!-- 页面容器 - 丝滑动画核心 -->
+<div class="pages-container">
+    <!-- 咖啡日历页 -->
+    <div id="coffeePage" class="page active">
+        <div class="page-content">
+            <!-- 拍照按钮 -->
+            <div class="fab" onclick="openCamera()">
+                <i class="fas fa-plus"></i>
+            </div>
+
+            <!-- 头部 -->
+            <header class="mb-6 fade-in-up" style="animation-delay: 0.1s;">
+                <h1 class="text-3xl font-bold tracking-tight">近7天</h1>
+                <p id="weekRange" class="text-sm text-gray-500 mt-0.5"></p>
+            </header>
+
+            <!-- 日历卡片 -->
+            <div class="bg-white rounded-[2rem] shadow-sm p-3 mb-6 fade-in-up" style="animation-delay: 0.2s;">
+                <div class="flex justify-between text-xs text-gray-400 mb-4 px-2">
+                    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                <div id="calendarGrid" class="calendar-grid relative">
+                    <!-- 日期将通过JS动态生成 -->
+                </div>
+            </div>
+
+            <!-- 常喝咖啡列表 -->
+            <div class="mb-6 fade-in-up" style="animation-delay: 0.3s;">
+                <h2 class="text-lg font-bold mb-4">常喝咖啡</h2>
+                <div id="frequentCoffees" class="space-y-3"></div>
+            </div>
+
+            <!-- 所有咖啡记录 -->
+            <div class="mb-6 fade-in-up" style="animation-delay: 0.4s;">
+                <h2 class="text-lg font-bold mb-4">所有记录</h2>
+                <div id="allRecords" class="space-y-3"></div>
+            </div>
+
+            <!-- CFTI 多维解释 -->
+            <div class="mb-6 fade-in-up" style="animation-delay: 0.5s;">
+                <h2 class="text-lg font-bold mb-4">你的咖啡人格维度</h2>
+                <div id="cftiDimensions"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计页 -->
+    <div id="statsPage" class="page">
+        <div class="page-content">
+            <!-- 时间筛选 -->
+            <section class="fade-in-up" style="animation-delay: 0.1s;">
+                <div class="flex space-x-2 overflow-x-auto pb-2">
+                    <button class="tab-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white" data-period="all">全部</button>
+                    <button class="tab-btn tab-active px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap" data-period="week">本周</button>
+                    <button class="tab-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white" data-period="month">本月</button>
+                    <button class="tab-btn px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white" data-period="year">本年</button>
+                </div>
+            </section>
+
+            <!-- 关键指标 -->
+            <section class="mt-6 fade-in-up" style="animation-delay: 0.2s;">
+                <h1 class="text-3xl font-bold mb-6">数据看板</h1>
+                <div class="grid grid-cols-2 gap-4" id="statsMetrics">
+                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-total">0</div><div class="text-sm text-gray-500">咖啡数量</div></div>
+                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-days">0</div><div class="text-sm text-gray-500">记录天数</div></div>
+                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-top">--</div><div class="text-sm text-gray-500">最爱咖啡</div></div>
+                    <div class="bg-white rounded-3xl p-5 shadow-sm"><div class="text-2xl font-bold stats-avg">0</div><div class="text-sm text-gray-500">日均杯数</div></div>
+                </div>
+            </section>
+
+            <!-- 温度 & 糖度分布 -->
+            <section class="mt-6 fade-in-up" style="animation-delay: 0.3s;">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white rounded-3xl p-5 shadow-sm">
+                        <h3 class="text-sm font-bold text-gray-500 mb-3">🌡 温度偏好</h3>
+                        <div class="h-36"><canvas id="tempChart"></canvas></div>
+                        <div id="tempLegend" class="flex justify-center gap-3 mt-2 text-xs text-gray-500"></div>
+                    </div>
+                    <div class="bg-white rounded-3xl p-5 shadow-sm">
+                        <h3 class="text-sm font-bold text-gray-500 mb-3">🍬 糖度选择</h3>
+                        <div class="h-36"><canvas id="sugarChart"></canvas></div>
+                        <div id="sugarLegend" class="flex justify-center gap-3 mt-2 text-xs text-gray-500"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 咖啡偏好 TOP5 -->
+            <section id="statsPreference" class="bg-white rounded-3xl p-5 shadow-sm mt-6 fade-in-up" style="animation-delay: 0.35s;">
+                <h2 class="text-lg font-bold mb-4">🏆 咖啡偏好 TOP5</h2>
+                <div id="preferenceList" class="space-y-4"></div>
+            </section>
+
+            <!-- 周间饮用节律 -->
+            <section id="statsWeekday" class="bg-white rounded-3xl p-5 shadow-sm mt-6 fade-in-up" style="animation-delay: 0.40s;">
+                <h2 class="text-lg font-bold mb-4">📅 一周饮用节律</h2>
+                <div class="h-40"><canvas id="weekdayChart"></canvas></div>
+            </section>
+
+            <!-- CFTI 咖啡人格 -->
+            <section id="cftiSection" class="mt-6 fade-in-up" style="animation-delay: 0.45s;">
+                <h2 class="text-xl font-bold mb-4">🧬 你的咖啡人格</h2>
+                <div id="cftiCard" class="bg-white rounded-[2rem] shadow-sm p-6">
+                    <div class="text-center mb-6">
+                        <div id="cftiCode" class="text-6xl font-black text-[#8D6E63] tracking-widest mb-2">----</div>
+                        <div id="cftiName" class="text-xl font-bold text-[#4E3423] mb-1">数据收集中</div>
+                        <p id="cftiDesc" class="text-sm text-gray-600 px-4">记录满7天后解锁你的专属咖啡人格</p>
+                    </div>
+                    <div class="h-48 mb-4"><canvas id="cftiRadar"></canvas></div>
+                    <button onclick="generateShareImage()" class="w-full bg-[#8D6E63] text-white py-3 rounded-2xl font-bold text-lg flex items-center justify-center gap-2">
+                        <i class="fas fa-camera"></i> 生成人格海报
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<!-- 底部导航栏 -->
+<div class="bottom-nav">
+    <div class="nav-item active" onclick="switchPage('coffeePage')">
+        <div class="nav-icon"><i class="fas fa-mug-hot"></i></div>
+        <div class="nav-text">咖啡</div>
+    </div>
+    <div class="nav-item" onclick="switchPage('statsPage')">
+        <div class="nav-icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="nav-text">统计</div>
+    </div>
+</div>
+
+<!-- 相机模态框 -->
+<div id="cameraModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="p-4 flex justify-between items-center border-b">
+            <button onclick="closeCamera()" class="text-gray-500"><i class="fa-solid fa-times"></i></button>
+            <h3 class="font-bold">记录咖啡</h3>
+            <button onclick="capturePhoto()" class="text-[#8D6E63] font-bold">完成</button>
+        </div>
+        <div class="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-black">
+            <video id="video" autoplay playsinline muted x5-video-player-type="h5" x5-video-player-fullscreen="true" webkit-playsinline class="w-full h-full object-cover"></video>
+            <canvas id="stickerCanvas" class="hidden"></canvas>
+        </div>
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center cursor-pointer" onclick="capturePhoto()">
+            <div class="w-12 h-12 bg-[#8D6E63] rounded-full"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 自定义名字模态框 -->
+<div id="nameModal" class="name-modal">
+    <div class="name-modal-content">
+        <h3 class="font-bold text-lg mb-4">咖啡详情</h3>
+
+        <!-- 咖啡名称 -->
+        <label class="text-xs text-gray-500 font-medium mb-1 block">名称</label>
+        <input type="text" id="coffeeNameInput" placeholder="例如：生椰拿铁"
+               class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#8D6E63] mb-4">
+
+        <!-- 温度选择 -->
+        <label class="text-xs text-gray-500 font-medium mb-1 block">温度</label>
+        <div class="flex space-x-2 mb-4">
+            <button onclick="selectTemp(this, 'hot')" class="temp-btn flex-1 py-2 px-3 border border-gray-200 rounded-xl text-sm font-medium transition-colors">🔥 热</button>
+            <button onclick="selectTemp(this, 'ice')" class="temp-btn flex-1 py-2 px-3 border border-gray-200 rounded-xl text-sm font-medium transition-colors active">🧊 冰</button>
+            <button onclick="selectTemp(this, 'warm')" class="temp-btn flex-1 py-2 px-3 border border-gray-200 rounded-xl text-sm font-medium transition-colors">🌤 温</button>
+        </div>
+
+        <!-- 糖度选择 -->
+        <label class="text-xs text-gray-500 font-medium mb-1 block">糖度</label>
+        <div class="flex space-x-2 mb-4">
+            <button onclick="selectSugar(this, 'none')" class="sugar-btn flex-1 py-2 px-3 border border-gray-200 rounded-xl text-sm font-medium transition-colors">0%</button>
+            <button onclick="selectSugar(this, 'half')" class="sugar-btn flex-1 py-2 px-3 border border-gray-200 rounded-xl text-sm font-medium transition-colors active">50%</button>
+            <button onclick="selectSugar(this, 'full')" class="sugar-btn flex-1 py-2 px-3 border border-gray-200 rounded-xl text-sm font-medium transition-colors">全糖</button>
+        </div>
+
+        <div class="flex space-x-3">
+            <button onclick="cancelName()" class="flex-1 py-3 border border-gray-200 rounded-xl font-medium">取消</button>
+            <button onclick="confirmName()" class="flex-1 py-3 bg-[#8D6E63] text-white rounded-xl font-medium">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div id="deleteModal" class="delete-modal">
+    <div class="delete-modal-content">
+        <h3 class="font-bold text-lg mb-4 text-red-600">删除咖啡记录</h3>
+        <p id="deleteMessage" class="text-gray-600 mb-6">确定要删除这条记录吗？</p>
+        <div class="flex space-x-3">
+            <button onclick="cancelDelete()" class="flex-1 py-3 border border-gray-200 rounded-xl font-medium">取消</button>
+            <button onclick="confirmDelete()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium">删除</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== 全局变量 ====================
+    let currentPhotoData = null;
+    let coffeeRecords = [];
+    let currentStream = null;
+    let deleteId = -1; // 要删除的记录ID
+    let deleteCoffeeName = null; // 按名称批量删除的咖啡名
+    let selectedTemp = 'ice'; // 温度选择
+    let selectedSugar = 'half'; // 糖度选择
+
+    // ==================== 页面切换 ====================
+    function switchPage(pageId) {
+        const currentPage = document.querySelector('.page.active');
+        const targetPage = document.getElementById(pageId);
+
+        if (currentPage === targetPage) return;
+
+        currentPage.classList.remove('active');
+        currentPage.classList.add('prev');
+
+        targetPage.classList.remove('prev');
+        targetPage.classList.add('active');
+
+        // 更新导航栏
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        if (pageId === 'coffeePage') {
+            document.querySelector('.nav-item:nth-child(1)').classList.add('active');
+        } else {
+            document.querySelector('.nav-item:nth-child(2)').classList.add('active');
+            // 切换到统计页时刷新所有数据
+            updateStatsPage();
+            if (hasEnoughRecords()) {
+                setTimeout(initRadarChart, 200);
+            }
+        }
+    }
+
+    // ==================== 日历（动态日期） ====================
+    let todayDay = 1;           // 今天的日期号
+    let todayCellId = '';       // 今天格子的 id
+
+    function initCalendar() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0-11
+        todayDay = now.getDate();
+
+        // 当月天数
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        // 当月1号是星期几（0=周日, 1=周一 ... 6=周六）
+        let firstDayOfWeek = new Date(year, month, 1).getDay();
+        // 转换为周一起始（周一=0 ... 周日=6）
+        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+        // 本周范围文字
+        const dayOfWeek = now.getDay() || 7; // 周一=1 ... 周日=7
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - dayOfWeek + 1);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        document.getElementById('weekRange').textContent =
+            (monday.getMonth() + 1) + '月' + monday.getDate() + '日 - ' +
+            (sunday.getMonth() + 1) + '月' + sunday.getDate() + '日';
+
+        const calendarGrid = document.getElementById('calendarGrid');
+        calendarGrid.innerHTML = '';
+
+        // 空白占位
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            const emptyDay = document.createElement('div');
+            emptyDay.className = 'calendar-day empty';
+            calendarGrid.appendChild(emptyDay);
+        }
+
+        // 日期格子
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayElement = document.createElement('div');
+            dayElement.className = 'calendar-day';
+            dayElement.textContent = day;
+
+            if (day < todayDay) {
+                dayElement.classList.add('past');
+            }
+
+            if (day === todayDay) {
+                dayElement.classList.add('today');
+                todayCellId = 'cell-' + day;
+                dayElement.id = todayCellId;
+            }
+
+            calendarGrid.appendChild(dayElement);
+        }
+    }
+
+    // ==================== 咖啡记录逻辑 ====================
+    function loadCoffeeRecords() {
+        // 优先使用原生数据库
+        if (window.AndroidBridge && window.AndroidBridge.loadRecords) {
+            try {
+                coffeeRecords = JSON.parse(window.AndroidBridge.loadRecords());
+            } catch(e) {
+                coffeeRecords = [];
+            }
+            // 如果数据库为空，尝试从 localStorage 迁移旧数据
+            if (coffeeRecords.length === 0) {
+                const legacyData = localStorage.getItem('coffeeRecords');
+                if (legacyData) {
+                    try {
+                        const legacy = JSON.parse(legacyData);
+                        legacy.forEach(record => {
+                            const recordJson = JSON.stringify({
+                                name: record.name || '',
+                                date: record.date || '',
+                                photo: record.photo || '',
+                                temp: record.temp || 'ice',
+                                sugar: record.sugar || 'half'
+                            });
+                            const newId = window.AndroidBridge.saveRecord(recordJson);
+                            record.id = newId;
+                        });
+                        // 重新加载数据库数据
+                        coffeeRecords = JSON.parse(window.AndroidBridge.loadRecords());
+                        // 清除旧数据
+                        localStorage.removeItem('coffeeRecords');
+                    } catch(e) {
+                        console.error('数据迁移失败:', e);
+                    }
+                }
+            }
+        } else {
+            // 浏览器开发环境回退到 localStorage
+            const stored = localStorage.getItem('coffeeRecords');
+            if (stored) {
+                coffeeRecords = JSON.parse(stored);
+            }
+        }
+        updateFrequentCoffees();
+        updateAllRecords();
+        updateCFTIDisplay();
+        updateStatsPage();
+    }
+
+    function saveCoffeeRecord(record) {
+        // 保存到原生数据库
+        if (window.AndroidBridge && window.AndroidBridge.saveRecord) {
+            const recordJson = JSON.stringify({
+                name: record.name,
+                date: record.date,
+                photo: record.photo || '',
+                temp: record.temp || 'ice',
+                sugar: record.sugar || 'half'
+            });
+            const newId = window.AndroidBridge.saveRecord(recordJson);
+            record.id = newId;
+        }
+        coffeeRecords.push(record);
+        updateFrequentCoffees();
+        updateAllRecords();
+        updateCFTIDisplay();
+        updateStatsPage();
+    }
+
+    function deleteCoffeeRecord(id) {
+        // 从原生数据库删除
+        if (window.AndroidBridge && window.AndroidBridge.deleteRecord) {
+            window.AndroidBridge.deleteRecord(id);
+        }
+        // 从本地数组移除
+        const idx = coffeeRecords.findIndex(r => r.id === id);
+        if (idx >= 0) {
+            coffeeRecords.splice(idx, 1);
+        }
+        updateFrequentCoffees();
+        updateAllRecords();
+        updateCFTIDisplay();
+        updateStatsPage();
+
+        // 恢复日历格子显示数字
+        const targetCell = document.getElementById(todayCellId);
+        if (targetCell) {
+            targetCell.innerHTML = '';
+            targetCell.textContent = todayDay;
+        }
+    }
+
+    // ==================== 判断是否满足CFTI生成条件（满7个不同日期有记录）====================
+    function hasEnoughRecords() {
+        const uniqueDays = new Set(coffeeRecords.map(r => r.date));
+        return uniqueDays.size >= 7;
+    }
+
+    // ==================== 判断最近7天是否有记录 ====================
+    function hasRecordsInLastWeek() {
+        if (coffeeRecords.length === 0) return false;
+
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        return coffeeRecords.some(record => {
+            const recordDate = new Date(record.date);
+            return recordDate >= oneWeekAgo;
+        });
+    }
+
+    // ==================== 更新CFTI显示 ====================
+    function updateCFTIDisplay() {
+        const cftiContainer = document.getElementById('cftiDimensions');
+        const cftiSection = document.getElementById('cftiSection');
+
+        if (!hasEnoughRecords()) {
+            // 不满7个不同日期，显示提示
+            cftiContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">☕</div>
+                    <div class="empty-state-title">多记录几天咖啡</div>
+                    <div class="empty-state-desc">在7个不同的日子记录咖啡<br>解锁你的专属咖啡人格分析</div>
+                </div>
+            `;
+            // 统计页也隐藏CFTI
+            cftiSection.style.display = 'none';
+        } else {
+            // 满足条件，显示CFTI
+            cftiSection.style.display = 'block';
+            renderCFTIDimensions();
+            initRadarChart();
+        }
+    }
+
+    function updateFrequentCoffees() {
+        const container = document.getElementById('frequentCoffees');
+
+        if (coffeeRecords.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-title">还没有咖啡记录</div>
+                    <div class="empty-state-desc">点击右下角的 + 按钮，记录你的第一杯咖啡吧！</div>
+                </div>
+            `;
+            return;
+        }
+
+        // 统计咖啡频率
+        const counts = {};
+        coffeeRecords.forEach(record => {
+            counts[record.name] = (counts[record.name] || 0) + 1;
+        });
+
+        const sorted = Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+
+        // 为每个咖啡找到最近一次的贴纸照片
+        const getLatestSticker = (coffeeName) => {
+            for (let i = coffeeRecords.length - 1; i >= 0; i--) {
+                if (coffeeRecords[i].name === coffeeName) {
+                    return coffeeRecords[i].photo;
+                }
+            }
+            return null;
+        };
+
+        container.innerHTML = sorted.map((coffee, index) => {
+            const stickerUrl = getLatestSticker(coffee.name);
+            const latestRecord = getLatestRecord(coffee.name);
+            const rankColors = ['bg-yellow-100 text-yellow-600', 'bg-gray-100 text-gray-600', 'bg-orange-100 text-orange-600'];
+            const rankBg = rankColors[index] || 'bg-blue-100 text-blue-600';
+
+            return `
+                <div class="bg-white rounded-2xl p-4 flex items-center coffee-record-item">
+                    ${stickerUrl ?
+                        `<img src="${stickerUrl}" class="coffee-sticker mr-4" alt="${coffee.name}">` :
+                        `<div class="w-12 h-12 rounded-full ${rankBg} flex items-center justify-center font-bold mr-4">${index + 1}</div>`
+                    }
+                    <div class="flex-1">
+                        <div class="font-bold">${coffee.name}</div>
+                        <div class="text-xs text-gray-500">喝了 ${coffee.count} 次 · ${getTempLabel(latestRecord.temp)} · ${getSugarLabel(latestRecord.sugar)}</div>
+                    </div>
+                    <div class="text-sm text-gray-400 mr-3">${Math.round((coffee.count / coffeeRecords.length) * 100)}%</div>
+                    <div class="delete-record-btn" onclick="showDeleteCoffeeNameConfirm('${coffee.name.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-times"></i>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateAllRecords() {
+        const container = document.getElementById('allRecords');
+
+        if (coffeeRecords.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">还没有咖啡记录，快去添加吧！</p>';
+            return;
+        }
+
+        container.innerHTML = coffeeRecords.map((record) => `
+            <div class="coffee-record-item">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center flex-1">
+                        <img src="${record.photo}" class="coffee-sticker mr-3" alt="${record.name}">
+                        <div>
+                            <div class="font-bold">${record.name}</div>
+                            <div class="text-xs text-gray-500">${record.date} · ${getTempLabel(record.temp)} · ${getSugarLabel(record.sugar)}</div>
+                        </div>
+                    </div>
+                    <div class="delete-record-btn" onclick="showDeleteConfirm(${record.id}, '${record.name}')">
+                        <i class="fas fa-times"></i>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ==================== CFTI 人格计算（MBTI风格：4维二元对立）====================
+    function computeCFTI() {
+        if (coffeeRecords.length === 0) return null;
+        const total = coffeeRecords.length;
+
+        // --- 维度1: H/C — 热饮派(Hot) vs 冷饮派(Cold) ---
+        let hotCount = 0;
+        coffeeRecords.forEach(r => {
+            if (r.temp === 'hot' || r.temp === 'warm') hotCount++;
+        });
+        const hotPercent = Math.round((hotCount / total) * 100);
+        const hcCode = hotPercent >= 50 ? 'H' : 'C';
+        const hcDominant = hcCode;  // 主导值显示热倾向
+
+        // --- 维度2: W/B — 嗜甜型(sWeet) vs 嗜苦型(Bitter) ---
+        let sweetCount = 0;
+        coffeeRecords.forEach(r => {
+            if (r.sugar === 'half' || r.sugar === 'full') sweetCount++;
+        });
+        const sweetPercent = Math.round((sweetCount / total) * 100);
+        const wbCode = sweetPercent >= 50 ? 'W' : 'B';
+        const wbDominant = sweetPercent;  // 主导值显示甜倾向
+
+        // --- 维度3: V/A — 探险型(Variety) vs 专注型(Anchored) ---
+        const uniqueNames = new Set(coffeeRecords.map(r => r.name)).size;
+        const varietyPercent = Math.round((uniqueNames / total) * 100);
+        const vaCode = varietyPercent >= 40 ? 'V' : 'A';
+        const vaDominant = varietyPercent;  // 主导值显示探索倾向
+
+        // --- 维度4: D/P — 仪式型(Dedicated) vs 随性型(Playful) ---
+        const uniqueDays = new Set(coffeeRecords.map(r => r.date)).size;
+        const dates = coffeeRecords.map(r => new Date(r.date));
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+        const totalSpan = Math.max(1, Math.round((maxDate - minDate) / (24 * 60 * 60 * 1000)) + 1);
+        const consistencyPercent = Math.round((uniqueDays / totalSpan) * 100);
+        const dpCode = consistencyPercent >= 50 ? 'D' : 'P';
+        const dpDominant = consistencyPercent;  // 主导值显示仪式倾向
+
+        // 组合CFTI code
+        const code = hcCode + wbCode + vaCode + dpCode;
+
+        // 生成人格描述
+        const traitDesc = [];
+        if (hcCode === 'H') traitDesc.push('温暖的热咖啡是你的挚爱');
+        else traitDesc.push('冰爽入魂，冷饮才是你的语言');
+        if (wbCode === 'W') traitDesc.push('糖分是你的快乐源泉');
+        else traitDesc.push('纯苦才是咖啡真谛');
+        if (vaCode === 'V') traitDesc.push('永远在探索新口味');
+        else traitDesc.push('专一而深，找到所爱便不再变心');
+        if (dpCode === 'D') traitDesc.push('每天一杯是雷打不动的仪式');
+        else traitDesc.push('喝咖啡看心情，随性自在');
+
+        return {
+            code: code,
+            hcCode: hcCode,
+            wbCode: wbCode,
+            vaCode: vaCode,
+            dpCode: dpCode,
+            traitDesc: traitDesc.join(' · '),
+            // 雷达图数据（每个维度显示主导侧的百分比）
+            radar: [hotPercent, sweetPercent, varietyPercent, consistencyPercent]
+        };
+    }
+
+    function getPersonalityName(cfti) {
+        // 根据CFTI code生成中文人格名称
+        const names = {
+            'H': { full: '热饮派', short: '热饮者' },
+            'C': { full: '冷饮派', short: '冷饮者' },
+            'W': { full: '嗜甜型', short: '甜党' },
+            'B': { full: '嗜苦型', short: '苦党' },
+            'V': { full: '探险型', short: '探索者' },
+            'A': { full: '专注型', short: '守护者' },
+            'D': { full: '仪式型', short: '仪式家' },
+            'P': { full: '随性型', short: '漫游者' }
+        };
+        const short = names[cfti.hcCode].short + names[cfti.wbCode].short
+                    + names[cfti.vaCode].short + names[cfti.dpCode].short;
+        const full = names[cfti.hcCode].full + ' · ' + names[cfti.wbCode].full
+                   + ' · ' + names[cfti.vaCode].full + ' · ' + names[cfti.dpCode].full;
+        return { short, full };
+    }
+
+    function renderCFTIDimensions() {
+        if (!hasEnoughRecords()) return;
+        const container = document.getElementById('cftiDimensions');
+        const cfti = computeCFTI();
+        const personality = getPersonalityName(cfti);
+
+        // 显示CFTI结果卡片
+        container.innerHTML = `
+            <div class="bg-white rounded-2xl p-5 mb-3 fade-in-up" style="animation-delay: 0s;">
+                <div class="text-center mb-2">
+                    <div class="text-4xl font-black text-[#8D6E63] tracking-widest mb-1">${cfti.code}</div>
+                    <div class="text-sm font-bold text-[#4E3423]">${personality.short}</div>
+                    <p class="text-xs text-gray-500 mt-2 leading-relaxed">${cfti.traitDesc}</p>
+                </div>
+            </div>
+        ` + renderDichotomy('H/C', '热饮派', '冷饮派',
+            cfti.hcCode === 'H',
+            cfti.hcCode === 'H'
+                ? '你喜欢热咖啡带来的温暖与仪式感'
+                : '冰爽才是王道，一年四季都要加冰',
+            0) + renderDichotomy('W/B', '嗜甜型', '嗜苦型',
+            cfti.wbCode === 'W',
+            cfti.wbCode === 'W'
+                ? '糖和奶是你的温柔乡'
+                : '纯苦才是咖啡本味，不加糖不加奶',
+            1) + renderDichotomy('V/A', '探险型', '专注型',
+            cfti.vaCode === 'V',
+            cfti.vaCode === 'V'
+                ? '每次都想尝试新品，永不停歇'
+                : '找到所爱便不再变心，专一到底',
+            2) + renderDichotomy('D/P', '仪式型', '随性型',
+            cfti.dpCode === 'D',
+            cfti.dpCode === 'D'
+                ? '每天一杯是雷打不动的仪式'
+                : '喝咖啡看心情，随心所欲',
+            3);
+    }
+
+    function renderDichotomy(letter, leftLabel, rightLabel, isLeft, desc, index) {
+        const activeBar = isLeft ? 'left' : 'right';
+        return `
+            <div class="bg-white rounded-2xl p-4 mb-3 fade-in-up" style="animation-delay: ${index * 0.06}s;">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="font-bold text-base tracking-wide">${letter}</span>
+                    <span class="text-sm text-gray-400">${leftLabel} / ${rightLabel}</span>
+                </div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-sm font-medium min-w-[48px] text-right ${isLeft ? 'text-[#8D6E63] font-bold' : 'text-gray-400'}">${leftLabel}</span>
+                    <div class="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                        <div class="h-full rounded-l-full transition-all ${isLeft ? 'bg-[#8D6E63]' : 'bg-gray-300'} flex-1"></div>
+                        <div class="h-full rounded-r-full transition-all ${!isLeft ? 'bg-[#8D6E63]' : 'bg-gray-300'} flex-1 scale-x-[--right-scale]" style="--right-scale:${isLeft ? 1 : 1}"></div>
+                    </div>
+                    <span class="text-sm font-medium min-w-[48px] ${!isLeft ? 'text-[#8D6E63] font-bold' : 'text-gray-400'}">${rightLabel}</span>
+                </div>
+                <p class="text-xs text-gray-500">${desc}</p>
+            </div>
+        `;
+    }
+
+    // ==================== 相机功能 ====================
+    function openCamera() {
+        document.getElementById('cameraModal').classList.add('show');
+        startCamera();
+    }
+
+    function closeCamera() {
+        document.getElementById('cameraModal').classList.remove('show');
+        stopCamera();
+    }
+
+    function startCamera() {
+        const video = document.getElementById('video');
+
+        // 停止之前的流
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        // 设置黑色背景，防止出现播放图标
+        video.poster = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        video.style.background = '#000';
+
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { exact: "environment" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        }).then(stream => {
+            currentStream = stream;
+            video.srcObject = stream;
+            video.play().catch(() => {});
+        }).catch(err => {
+            console.error("摄像头错误:", err);
+            // 如果后置摄像头不可用，尝试前置
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: "user",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            }).then(stream => {
+                currentStream = stream;
+                video.srcObject = stream;
+                video.play().catch(() => {});
+            }).catch(err2 => {
+                alert("无法访问摄像头，请检查权限设置");
+                closeCamera();
+            });
+        });
+    }
+
+    function stopCamera() {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+        const video = document.getElementById('video');
+        video.poster = '';
+        video.srcObject = null;
+        video.style.background = '#000';
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('stickerCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = 80;
+        canvas.height = 80;
+
+        // 计算裁剪区域（中心裁剪为正方形）
+        const size = Math.min(video.videoWidth, video.videoHeight);
+        const x = (video.videoWidth - size) / 2;
+        const y = (video.videoHeight - size) / 2;
+
+        ctx.drawImage(video, x, y, size, size, 0, 0, 80, 80);
+
+        // 添加白色边框
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, 80, 80);
+
+        currentPhotoData = canvas.toDataURL('image/png');
+        closeCamera();
+
+        // 显示命名模态框
+        document.getElementById('nameModal').classList.add('show');
+        document.getElementById('coffeeNameInput').focus();
+    }
+
+    // ==================== 贴纸生成（带删除按钮）====================
+    function addStickerToCalendar(dataUrl, name, recordId) {
+        const targetCell = document.getElementById(todayCellId);
+        if (!targetCell) {
+            console.error('找不到目标单元格 ' + todayCellId);
+            return;
+        }
+
+        targetCell.innerHTML = '';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sticker-wrapper';
+        wrapper.style.setProperty('--rotate', (Math.random() * 20 - 10) + 'deg');
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.className = 'sticker-img';
+        img.alt = name;
+
+        const tag = document.createElement('div');
+        tag.className = 'name-tag';
+        tag.textContent = name;
+
+        // 删除按钮
+        const deleteBtn = document.createElement('div');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.onclick = function(e) {
+            e.stopPropagation();
+            showDeleteConfirm(recordId, name);
+        };
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(tag);
+        wrapper.appendChild(deleteBtn);
+
+        // 点击：未放大时放大，放大后点击触发删除
+        wrapper.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (this.classList.contains('scaled')) {
+                showDeleteConfirm(recordId, name);
+            } else {
+                this.classList.add('scaled');
+            }
+        });
+
+        targetCell.appendChild(wrapper);
+    }
+
+    // ==================== 删除功能 ====================
+    // ==================== 辅助函数 ====================
+    function getTempLabel(temp) {
+        const map = { hot: '🔥热', ice: '🧊冰', warm: '🌤温' };
+        return map[temp] || '🧊冰';
+    }
+
+    function getSugarLabel(sugar) {
+        const map = { none: '0%糖', half: '半糖', full: '全糖' };
+        return map[sugar] || '半糖';
+    }
+
+    function getLatestRecord(coffeeName) {
+        for (let i = coffeeRecords.length - 1; i >= 0; i--) {
+            if (coffeeRecords[i].name === coffeeName) {
+                return coffeeRecords[i];
+            }
+        }
+        return { temp: 'ice', sugar: 'half' };
+    }
+    function showDeleteConfirm(id, name) {
+        deleteId = id;
+        deleteCoffeeName = null;
+        document.getElementById('deleteMessage').textContent = '确定要删除 "' + name + '" 这条记录吗？';
+        document.getElementById('deleteModal').classList.add('show');
+    }
+
+    function showDeleteCoffeeNameConfirm(name) {
+        deleteId = -1;
+        deleteCoffeeName = name;
+        document.getElementById('deleteMessage').textContent = '确定要删除所有 "' + name + '" 的咖啡记录吗？此操作不可撤销。';
+        document.getElementById('deleteModal').classList.add('show');
+    }
+
+    function cancelDelete() {
+        deleteId = -1;
+        deleteCoffeeName = null;
+        document.getElementById('deleteModal').classList.remove('show');
+    }
+
+    function confirmDelete() {
+        if (deleteCoffeeName) {
+            deleteRecordsByCoffeeName(deleteCoffeeName);
+        } else if (deleteId >= 0) {
+            deleteCoffeeRecord(deleteId);
+        }
+        cancelDelete();
+    }
+
+    function deleteRecordsByCoffeeName(name) {
+        // 从原生数据库删除
+        if (window.AndroidBridge && window.AndroidBridge.deleteRecordsByName) {
+            window.AndroidBridge.deleteRecordsByName(name);
+        }
+        // 从本地数组移除
+        coffeeRecords = coffeeRecords.filter(r => r.name !== name);
+        updateFrequentCoffees();
+        updateAllRecords();
+        updateCFTIDisplay();
+        updateStatsPage();
+
+        // 恢复日历贴纸数字
+        const targetCell = document.getElementById(todayCellId);
+        if (targetCell) {
+            targetCell.innerHTML = '';
+            targetCell.textContent = todayDay;
+        }
+        // 如果还有记录，显示最后一个
+        if (coffeeRecords.length > 0) {
+            const lastRecord = coffeeRecords[coffeeRecords.length - 1];
+            addStickerToCalendar(lastRecord.photo, lastRecord.name, lastRecord.id);
+        }
+    }
+
+    // ==================== 命名功能 ====================
+    function selectTemp(btn, value) {
+        document.querySelectorAll('.temp-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedTemp = value;
+    }
+
+    function selectSugar(btn, value) {
+        document.querySelectorAll('.sugar-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedSugar = value;
+    }
+
+    function confirmName() {
+        const nameInput = document.getElementById('coffeeNameInput');
+        const name = nameInput.value.trim();
+        const coffeeName = name || "今日咖啡";
+
+        // 保存记录
+        const newRecord = {
+            name: coffeeName,
+            date: new Date().toISOString().split('T')[0],
+            photo: currentPhotoData,
+            temp: selectedTemp,
+            sugar: selectedSugar
+        };
+
+        saveCoffeeRecord(newRecord);
+
+        // 添加到日历（传递记录ID）
+        addStickerToCalendar(currentPhotoData, coffeeName, coffeeRecords[coffeeRecords.length - 1].id);
+
+        // 关闭模态框
+        closeNameModal();
+    }
+
+    function cancelName() {
+        closeNameModal();
+    }
+
+    function closeNameModal() {
+        document.getElementById('nameModal').classList.remove('show');
+        document.getElementById('coffeeNameInput').value = '';
+        // 重置选择
+        selectedTemp = 'ice';
+        document.querySelectorAll('.temp-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.temp-btn')[1].classList.add('active');
+        selectedSugar = 'half';
+        document.querySelectorAll('.sugar-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.sugar-btn')[1].classList.add('active');
+        currentPhotoData = null;
+    }
+
+    // 回车确认
+    document.getElementById('coffeeNameInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            confirmName();
+        }
+    });
+
+    // ==================== 统计页功能 ====================
+    let currentPeriod = 'week';  // 当前筛选周期
+    let tempChartInstance = null;
+    let sugarChartInstance = null;
+    let weekdayChartInstance = null;
+
+    // 时间筛选
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('tab-active');
+            });
+            this.classList.add('tab-active');
+            currentPeriod = this.dataset.period;
+            updateStatsPage();
+        });
+    });
+
+    // 按周期过滤记录
+    function filterRecordsByPeriod(period) {
+        if (period === 'all') return [...coffeeRecords];
+        const now = new Date();
+        let startDate;
+        switch (period) {
+            case 'week':
+                // 本周一 00:00
+                const dayOfWeek = now.getDay() || 7; // 周日=7
+                startDate = new Date(now);
+                startDate.setHours(0,0,0,0);
+                startDate.setDate(now.getDate() - dayOfWeek + 1);
+                break;
+            case 'month':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                break;
+            case 'year':
+                startDate = new Date(now.getFullYear(), 0, 1);
+                break;
+            default:
+                return [...coffeeRecords];
+        }
+        return coffeeRecords.filter(r => {
+            const d = new Date(r.date);
+            d.setHours(0,0,0,0);
+            return d >= startDate;
+        });
+    }
+
+    // 更新整个统计页
+    function updateStatsPage() {
+        const records = filterRecordsByPeriod(currentPeriod);
+        updateStatsMetrics(records);
+        updatePreferenceList(records);
+        updateCharts(records);
+    }
+
+    // 更新关键指标
+    function updateStatsMetrics(records) {
+        const total = records.length;
+        const uniqueDays = new Set(records.map(r => r.date)).size;
+        
+        // 最爱咖啡
+        let topName = '--';
+        if (records.length > 0) {
+            const counts = {};
+            records.forEach(r => { counts[r.name] = (counts[r.name] || 0) + 1; });
+            topName = Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
+        }
+
+        // 日均杯数
+        let avgPerDay = '0';
+        if (records.length > 0 && uniqueDays > 0) {
+            avgPerDay = (total / uniqueDays).toFixed(1);
+        }
+
+        document.querySelector('.stats-total').textContent = total + '杯';
+        document.querySelector('.stats-days').textContent = uniqueDays + '天';
+        document.querySelector('.stats-top').textContent = topName;
+        document.querySelector('.stats-avg').textContent = avgPerDay;
+    }
+
+    // 更新咖啡偏好 TOP5
+    function updatePreferenceList(records) {
+        const container = document.getElementById('preferenceList');
+        if (records.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-center py-4">暂无数据</p>';
+            return;
+        }
+
+        const counts = {};
+        records.forEach(r => { counts[r.name] = (counts[r.name] || 0) + 1; });
+        const total = records.length;
+        const sorted = Object.entries(counts)
+            .sort((a,b) => b[1] - a[1])
+            .slice(0, 5);
+
+        const barColors = ['#8D6E63', '#A1887F', '#BCAAA4', '#D7CCC8', '#EFEBE9'];
+        const emojis = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+
+        container.innerHTML = sorted.map(([name, count], i) => {
+            const pct = Math.round((count / total) * 100);
+            return `
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-medium">${emojis[i]} ${name}</span>
+                        <span class="text-gray-500">${count}杯 · ${pct}%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2.5">
+                        <div class="h-2.5 rounded-full transition-all duration-700" style="width: ${pct}%; background: ${barColors[i]}"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // 更新所有图表
+    function updateCharts(records) {
+        initTempSugarCharts(records);
+        initWeekdayChart(records);
+    }
+
+    // 温度 & 糖度环形图
+    function initTempSugarCharts(records) {
+        // 销毁旧图表
+        if (tempChartInstance) { tempChartInstance.destroy(); tempChartInstance = null; }
+        if (sugarChartInstance) { sugarChartInstance.destroy(); sugarChartInstance = null; }
+
+        const doughnutOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: { legend: { display: false } }
+        };
+
+        // 温度分布
+        const tempCounts = { hot: 0, ice: 0, warm: 0 };
+        records.forEach(r => { if (tempCounts[r.temp] !== undefined) tempCounts[r.temp]++; });
+        const tempColors = ['#E57373', '#64B5F6', '#FFB74D'];
+        const tempLabels = ['🔥热', '🧊冰', '🌤温'];
+
+        const tempCtx = document.getElementById('tempChart');
+        if (tempCtx && (tempCounts.hot + tempCounts.ice + tempCounts.warm > 0)) {
+            tempChartInstance = new Chart(tempCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: tempLabels,
+                    datasets: [{
+                        data: [tempCounts.hot, tempCounts.ice, tempCounts.warm],
+                        backgroundColor: tempColors,
+                        borderWidth: 0
+                    }]
+                },
+                options: doughnutOptions
+            });
+        } else if (tempCtx) {
+            // 没有数据时显示灰色圆环
+            tempChartInstance = new Chart(tempCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{ data: [1], backgroundColor: ['#E0E0E0'], borderWidth: 0 }]
+                },
+                options: { ...doughnutOptions }
+            });
+        }
+
+        // 温度图例
+        const totalTemp = tempCounts.hot + tempCounts.ice + tempCounts.warm;
+        document.getElementById('tempLegend').innerHTML = tempLabels.map((label, i) => {
+            const colors = ['#E57373','#64B5F6','#FFB74D'];
+            const keys = ['hot','ice','warm'];
+            const count = tempCounts[keys[i]];
+            const pct = totalTemp > 0 ? Math.round(count/totalTemp*100) : 0;
+            return `<span style="color:${colors[i]}">● ${label} ${pct}%</span>`;
+        }).join('');
+
+        // 糖度分布
+        const sugarCounts = { none: 0, half: 0, full: 0 };
+        records.forEach(r => { if (sugarCounts[r.sugar] !== undefined) sugarCounts[r.sugar]++; });
+        const sugarColors = ['#81C784', '#FFF176', '#FF8A65'];
+        const sugarLabels = ['0%糖', '半糖', '全糖'];
+
+        const sugarCtx = document.getElementById('sugarChart');
+        if (sugarCtx && (sugarCounts.none + sugarCounts.half + sugarCounts.full > 0)) {
+            sugarChartInstance = new Chart(sugarCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: sugarLabels,
+                    datasets: [{
+                        data: [sugarCounts.none, sugarCounts.half, sugarCounts.full],
+                        backgroundColor: sugarColors,
+                        borderWidth: 0
+                    }]
+                },
+                options: doughnutOptions
+            });
+        } else if (sugarCtx) {
+            sugarChartInstance = new Chart(sugarCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{ data: [1], backgroundColor: ['#E0E0E0'], borderWidth: 0 }]
+                },
+                options: { ...doughnutOptions }
+            });
+        }
+
+        // 糖度图例
+        const totalSugar = sugarCounts.none + sugarCounts.half + sugarCounts.full;
+        document.getElementById('sugarLegend').innerHTML = sugarLabels.map((label, i) => {
+            const colors = ['#81C784','#FFF176','#FF8A65'];
+            const keys = ['none','half','full'];
+            const count = sugarCounts[keys[i]];
+            const pct = totalSugar > 0 ? Math.round(count/totalSugar*100) : 0;
+            return `<span style="color:${colors[i]}">● ${label} ${pct}%</span>`;
+        }).join('');
+    }
+
+    // 一周饮用节律柱状图
+    function initWeekdayChart(records) {
+        if (weekdayChartInstance) { weekdayChartInstance.destroy(); weekdayChartInstance = null; }
+
+        const ctx = document.getElementById('weekdayChart');
+        if (!ctx) return;
+
+        const dayLabels = ['周一','周二','周三','周四','周五','周六','周日'];
+        const dayCounts = [0,0,0,0,0,0,0];
+
+        records.forEach(r => {
+            const d = new Date(r.date);
+            // getDay(): 0=周日,1=周一...
+            const idx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+            dayCounts[idx]++;
+        });
+
+        const maxVal = Math.max(...dayCounts, 1);
+        const barColors = dayCounts.map(v => 
+            v === Math.max(...dayCounts) ? '#8D6E63' : '#D7CCC8'
+        );
+
+        weekdayChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: dayLabels,
+                datasets: [{
+                    data: dayCounts,
+                    backgroundColor: barColors,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, font: { size: 10 } },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        ticks: { font: { size: 10 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // CFTI 雷达图（基于真实数据）
+    let cftiRadarInstance = null;  // 避免重复创建Chart实例
+
+    function initRadarChart() {
+        if (!hasEnoughRecords()) return;
+
+        const cfti = computeCFTI();
+        const personality = getPersonalityName(cfti);
+
+        // 更新统计页的CFTI卡片
+        document.getElementById('cftiCode').textContent = cfti.code;
+        document.getElementById('cftiName').textContent = personality.short;
+        document.getElementById('cftiDesc').textContent = cfti.traitDesc;
+
+        // 销毁旧图表
+        if (cftiRadarInstance) {
+            cftiRadarInstance.destroy();
+            cftiRadarInstance = null;
+        }
+
+        const ctx = document.getElementById('cftiRadar');
+        if (!ctx) return;
+
+        const labels = [
+            '热饮倾向 H/C',
+            '嗜甜倾向 W/B',
+            '探索倾向 V/A',
+            '仪式倾向 D/P'
+        ];
+
+        cftiRadarInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: cfti.code,
+                    data: cfti.radar,
+                    backgroundColor: 'rgba(141, 110, 99, 0.2)',
+                    borderColor: '#8D6E63',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#8D6E63',
+                    pointBorderColor: '#fff',
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            display: true,
+                            backdropColor: 'transparent',
+                            font: { size: 9 },
+                            stepSize: 25
+                        },
+                        pointLabels: {
+                            font: { size: 11, weight: '600' },
+                            color: '#3E2723'
+                        },
+                        grid: {
+                            color: 'rgba(141, 110, 99, 0.15)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // 生成海报
+    function generateShareImage() {
+        const card = document.getElementById('cftiCard');
+        const btn = document.querySelector('#cftiCard button');
+        btn.style.display = 'none';
+
+        html2canvas(card, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#FFFFFF'
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            if (window.AndroidBridge) {
+                window.AndroidBridge.saveImage(imgData);
+            } else {
+                // 浏览器环境，创建下载链接
+                const link = document.createElement('a');
+                link.download = 'CFTI_' + new Date().getTime() + '.png';
+                link.href = imgData;
+                link.click();
+            }
+            btn.style.display = 'flex';
+        });
+    }
+
+    // ==================== 初始化 ====================
+    window.onload = function() {
+        initCalendar();
+        loadCoffeeRecords();
+        updateStatsPage(); // 初始化统计页数据
+
+        // 加载初始贴纸（如果有记录）
+        if (coffeeRecords.length > 0) {
+            const lastRecord = coffeeRecords[coffeeRecords.length - 1];
+            addStickerToCalendar(lastRecord.photo, lastRecord.name, lastRecord.id);
+        } else {
+            // 没有记录时显示示例贴纸（但不显示CFTI）
+            const targetCell = document.getElementById(todayCellId);
+            targetCell.innerHTML = '';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'sticker-wrapper';
+            wrapper.style.setProperty('--rotate', '-5deg');
+
+            const img = document.createElement('img');
+            img.src = 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200';
+            img.className = 'sticker-img';
+            img.alt = '示例咖啡';
+
+            const tag = document.createElement('div');
+            tag.className = 'name-tag';
+            tag.textContent = '示例咖啡';
+
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.onclick = function(e) {
+                e.stopPropagation();
+                alert('这是示例贴纸，不能删除哦！');
+            };
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(tag);
+            wrapper.appendChild(deleteBtn);
+
+            wrapper.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (this.classList.contains('scaled')) {
+                    alert('这是示例贴纸，不能删除哦！');
+                } else {
+                    this.classList.add('scaled');
+                }
+            });
+
+            targetCell.appendChild(wrapper);
+        }
+    };
+
+    // 点击空白处关闭贴纸放大
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.sticker-wrapper')) {
+            document.querySelectorAll('.sticker-wrapper').forEach(el => {
+                el.classList.remove('scaled');
+            });
+        }
+    });
+</script>
+</body>
+</html>
