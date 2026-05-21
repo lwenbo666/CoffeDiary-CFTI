@@ -505,6 +505,61 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             object-fit: cover;
             flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .coffee-sticker:active {
+            transform: scale(0.95);
+        }
+
+        /* ==================== 全屏图片查看器 ==================== */
+        .image-viewer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 5000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .image-viewer-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .image-viewer-overlay img {
+            max-width: 92vw;
+            max-height: 88vh;
+            border-radius: 20px;
+            border: 6px solid white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            object-fit: contain;
+            transform: scale(0.8);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .image-viewer-overlay.show img {
+            transform: scale(1);
+        }
+        .image-viewer-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .image-viewer-close:active {
+            background: rgba(255,255,255,0.3);
         }
 
         /* ==================== 视频播放器 - 隐藏播放按钮 ==================== */
@@ -875,6 +930,12 @@
             <button onclick="confirmName()" class="flex-1 py-3 bg-[#8D6E63] text-white rounded-xl font-medium">确定</button>
         </div>
     </div>
+</div>
+
+<!-- 全屏图片查看器 -->
+<div id="imageViewer" class="image-viewer-overlay" onclick="closeImageViewer()">
+    <div class="image-viewer-close" onclick="closeImageViewer()"><i class="fas fa-times"></i></div>
+    <img id="imageViewerImg" src="" alt="" onclick="event.stopPropagation()">
 </div>
 
 <!-- 删除确认模态框 -->
@@ -1312,7 +1373,7 @@
             return `
                 <div class="bg-white rounded-2xl p-4 flex items-center coffee-record-item">
                     ${stickerUrl ?
-                        `<img src="${stickerUrl}" class="coffee-sticker mr-4" alt="${coffee.name}">` :
+                        `<img src="${stickerUrl}" class="coffee-sticker mr-4" alt="${coffee.name}" onclick="openImageViewer('${stickerUrl}');event.stopPropagation()">` :
                         `<div class="w-12 h-12 rounded-full ${rankBg} flex items-center justify-center font-bold mr-4">${index + 1}</div>`
                     }
                     <div class="flex-1">
@@ -1337,7 +1398,7 @@
             <div class="coffee-record-item" onclick="this.classList.toggle('delete-visible')">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1">
-                        <img src="${record.photo}" class="coffee-sticker mr-3" alt="${record.name}">
+                        <img src="${record.photo}" class="coffee-sticker mr-3" alt="${record.name}" onclick="openImageViewer('${record.photo}');event.stopPropagation()">
                         <div>
                             <div class="font-bold">${record.name}</div>
                             <div class="text-xs text-gray-500">${record.date} · ${getTempLabel(record.temp)} · ${getSugarLabel(record.sugar)}</div>
@@ -1640,6 +1701,16 @@
     }
 
     // ==================== 删除功能 ====================
+    // ==================== 全屏图片查看 ====================
+    function openImageViewer(src) {
+        if (!src) return;
+        document.getElementById('imageViewerImg').src = src;
+        document.getElementById('imageViewer').classList.add('show');
+    }
+
+    function closeImageViewer() {
+        document.getElementById('imageViewer').classList.remove('show');
+    }
     // ==================== 辅助函数 ====================
     function getTempLabel(temp) {
         const map = { hot: '🔥热', ice: '🧊冰', warm: '🌤温' };
@@ -2253,6 +2324,13 @@
             document.querySelectorAll('.sticker-wrapper').forEach(el => {
                 el.classList.remove('scaled');
             });
+        }
+    });
+
+    // 按 Esc 关闭全屏图片查看器
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeImageViewer();
         }
     });
 </script>
