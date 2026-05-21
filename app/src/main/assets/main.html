@@ -200,17 +200,6 @@
             animation-play-state: running;
         }
 
-        .sticker-wrapper.scaled {
-            animation: none;
-            transform: rotate(var(--rotate));
-            z-index: 50;
-            inset: -80%;
-        }
-
-        .sticker-wrapper.scaled .sticker-frame {
-            width: 337%;
-        }
-
         .sticker-frame {
             width: 350%;
             height: auto;
@@ -252,7 +241,52 @@
             z-index: 100;
         }
 
-        .sticker-wrapper.scaled .name-tag {
+        /* ==================== 贴纸展开遮罩 + 丝滑动画 ==================== */
+        .sticker-expand-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            background: rgba(0,0,0,0);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease, background 0.35s ease;
+        }
+        .sticker-expand-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+            background: rgba(0,0,0,0.55);
+        }
+        .sticker-expand-clone {
+            position: fixed;
+            z-index: 1;
+            transition: width 0.5s cubic-bezier(0.22, 0.61, 0.36, 1),
+                        height 0.5s cubic-bezier(0.22, 0.61, 0.36, 1),
+                        top 0.5s cubic-bezier(0.22, 0.61, 0.36, 1),
+                        left 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        .sticker-expand-clone .sticker-frame {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .sticker-expand-clone .name-tag {
+            opacity: 0;
+            transform: translateX(-50%) translateY(5px);
+            transition: all 0.35s ease 0.15s;
+            position: absolute;
+            bottom: -42px;
+            left: 50%;
+            background: rgba(0,0,0,0.35);
+            color: white;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .sticker-expand-overlay.active .sticker-expand-clone .name-tag {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
@@ -944,6 +978,9 @@
     <div class="image-viewer-close" onclick="closeImageViewer()"><i class="fas fa-times"></i></div>
     <img id="imageViewerImg" src="" alt="" onclick="event.stopPropagation()">
 </div>
+
+<!-- 贴纸展开遮罩 -- 丝滑从小而大 -->
+<div id="stickerExpandOverlay" class="sticker-expand-overlay" onclick="closeStickerExpand()"></div>
 
 <!-- 删除确认模态框 -->
 <div id="deleteModal" class="delete-modal">
@@ -1699,14 +1736,10 @@
         wrapper.appendChild(tag);
         wrapper.appendChild(deleteBtn);
 
-        // 点击：未放大时放大，放大后点击触发删除
+        // 点击展开动画
         wrapper.addEventListener('click', function(e) {
             e.stopPropagation();
-            if (this.classList.contains('scaled')) {
-                showDeleteConfirm(recordId, name);
-            } else {
-                this.classList.add('scaled');
-            }
+            openStickerExpand(this, recordId, name);
         });
 
         targetCell.appendChild(wrapper);
@@ -1722,6 +1755,90 @@
 
     function closeImageViewer() {
         document.getElementById('imageViewer').classList.remove('show');
+    }
+
+    // ==================== 贴纸展开动画（从小而大，丝滑过渡）====================
+    function openStickerExpand(originalWrapper, recordId, name) {
+        const frame = originalWrapper.querySelector('.sticker-frame');
+        const img = frame.querySelector('.sticker-img');
+        const rect = frame.getBoundingClientRect();
+
+        const overlay = document.getElementById('stickerExpandOverlay');
+        overlay.innerHTML = '';
+
+        const clone = document.createElement('div');
+        clone.className = 'sticker-expand-clone';
+        clone.style.width = rect.width + 'px';
+        clone.style.height = rect.height + 'px';
+        clone.style.top = rect.top + 'px';
+        clone.style.left = rect.left + 'px';
+
+        const cloneFrame = document.createElement('div');
+        cloneFrame.className = 'sticker-frame';
+        const cloneImg = document.createElement('img');
+        cloneImg.src = img.src;
+        cloneImg.className = 'sticker-img';
+        cloneImg.alt = img.alt;
+        cloneFrame.appendChild(cloneImg);
+
+        const cloneTag = document.createElement('div');
+        cloneTag.className = 'name-tag';
+        cloneTag.textContent = name;
+
+        clone.appendChild(cloneFrame);
+        clone.appendChild(cloneTag);
+        overlay.appendChild(clone);
+
+        overlay._originalWrapper = originalWrapper;
+        overlay._recordId = recordId;
+        overlay._name = name;
+        overlay.classList.add('active');
+        originalWrapper.style.opacity = '0';
+
+        // 展开至屏幕中央
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const w = Math.min(innerWidth * 0.7, 320);
+                const h = w * 6 / 5;
+                clone.style.width = w + 'px';
+                clone.style.height = h + 'px';
+                clone.style.top = ((innerHeight - h) / 2 - 28) + 'px';
+                clone.style.left = ((innerWidth - w) / 2) + 'px';
+            });
+        });
+
+        // 点击展开后的贴纸 → 触发删除提示
+        clone.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (recordId >= 0) {
+                closeStickerExpand();
+                setTimeout(() => showDeleteConfirm(recordId, name), 420);
+            }
+        });
+    }
+
+    function closeStickerExpand() {
+        const overlay = document.getElementById('stickerExpandOverlay');
+        if (!overlay.classList.contains('active')) return;
+        const clone = overlay.querySelector('.sticker-expand-clone');
+        const originalWrapper = overlay._originalWrapper;
+
+        if (originalWrapper && clone) {
+            const frame = originalWrapper.querySelector('.sticker-frame');
+            const rect = frame.getBoundingClientRect();
+            clone.style.width = rect.width + 'px';
+            clone.style.height = rect.height + 'px';
+            clone.style.top = rect.top + 'px';
+            clone.style.left = rect.left + 'px';
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                overlay.innerHTML = '';
+                originalWrapper.style.opacity = '';
+            }, 520);
+        } else {
+            overlay.classList.remove('active');
+            overlay.innerHTML = '';
+        }
     }
     // ==================== 辅助函数 ====================
     function getTempLabel(temp) {
@@ -2323,26 +2440,16 @@
         wrapper.appendChild(tag);
         wrapper.appendChild(deleteBtn);
 
+        // 点击展开动画
         wrapper.addEventListener('click', function(e) {
             e.stopPropagation();
-            if (this.classList.contains('scaled')) {
-                alert('这是示例贴纸，不能删除哦！');
-            } else {
-                this.classList.add('scaled');
-            }
+            openStickerExpand(this, -1, '示例咖啡');
         });
 
         targetCell.appendChild(wrapper);
     }
 
-    // 点击空白处关闭贴纸放大
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.sticker-wrapper')) {
-            document.querySelectorAll('.sticker-wrapper').forEach(el => {
-                el.classList.remove('scaled');
-            });
-        }
-    });
+    // 点击空白处关闭贴纸展开（遮罩本身已处理点击关闭，这里兜底）
 
     // 按 Esc 关闭全屏图片查看器
     document.addEventListener('keydown', function(e) {
