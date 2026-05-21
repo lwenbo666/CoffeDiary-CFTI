@@ -468,9 +468,10 @@
             font-weight: 700;
         }
 
-        /* 统计页色环禁用点击 */
+        /* 统计页图表禁用点击 */
         #tempChart,
-        #sugarChart {
+        #sugarChart,
+        #weekdayChart {
             pointer-events: none;
         }
 
@@ -488,11 +489,6 @@
     <!-- 咖啡日历页 -->
     <div id="coffeePage" class="page active">
         <div class="page-content">
-            <!-- 拍照按钮 -->
-            <div class="fab" onclick="openCamera()">
-                <i class="fas fa-plus"></i>
-            </div>
-
             <!-- 头部 -->
             <header class="mb-6 fade-in-up" style="animation-delay: 0.1s;">
                 <h1 class="text-3xl font-bold tracking-tight">近7天</h1>
@@ -600,6 +596,11 @@
     </div>
 </div>
 
+<!-- 拍照按钮（固定右下角） -->
+<div class="fab" id="fabBtn" onclick="openCamera()">
+    <i class="fas fa-plus"></i>
+</div>
+
 <!-- 底部导航栏 -->
 <div class="bottom-nav">
     <div class="nav-item active" onclick="switchPage('coffeePage')">
@@ -705,8 +706,10 @@
 
         if (pageId === 'coffeePage') {
             document.querySelector('.nav-item:nth-child(1)').classList.add('active');
+            document.getElementById('fabBtn').style.display = 'flex';
         } else {
             document.querySelector('.nav-item:nth-child(2)').classList.add('active');
+            document.getElementById('fabBtn').style.display = 'none';
             // 切换到统计页时刷新所有数据
             updateStatsPage();
             if (hasEnoughRecords()) {
