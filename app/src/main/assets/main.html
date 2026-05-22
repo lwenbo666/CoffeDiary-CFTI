@@ -518,6 +518,21 @@
             transform: scale(0.95);
         }
 
+        /* ==================== 抠图开关按钮 ==================== */
+        .segment-toggle-active {
+            background: #8D6E63 !important;
+            color: white !important;
+            border-color: #8D6E63 !important;
+        }
+
+        /* ==================== 抠图处理加载动画 ==================== */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 0.8s linear infinite;
+        }
+
         /* ==================== 贴纸展开遮罩 + 丝滑动画 ==================== */
         .sticker-expand-overlay {
             position: fixed;
@@ -898,7 +913,12 @@
         <div class="p-4 flex justify-between items-center border-b">
             <button onclick="closeCamera()" class="text-gray-500"><i class="fa-solid fa-times"></i></button>
             <h3 class="font-bold">记录咖啡</h3>
-            <button onclick="capturePhoto()" class="text-[#8D6E63] font-bold">完成</button>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleSegmentMode(event)" id="segmentToggleBtn"
+                        class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-500 transition-all"
+                        title="咖啡杯轮廓抠图">✂️ 抠图</button>
+                <button onclick="capturePhoto()" class="text-[#8D6E63] font-bold">完成</button>
+            </div>
         </div>
         <div class="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-black">
             <video id="video" autoplay playsinline muted x5-video-player-type="h5" x5-video-player-fullscreen="true" webkit-playsinline class="w-full h-full object-cover"></video>
@@ -906,6 +926,11 @@
         </div>
         <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center cursor-pointer" onclick="capturePhoto()">
             <div class="w-12 h-12 bg-[#8D6E63] rounded-full"></div>
+        </div>
+        <!-- 抠图处理加载层 -->
+        <div id="segmentLoadingOverlay" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 hidden">
+            <div class="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mb-3"></div>
+            <span class="text-white text-sm font-medium">AI 抠图中...</span>
         </div>
     </div>
 </div>
@@ -967,6 +992,7 @@
     let deleteCoffeeName = null; // 按名称批量删除的咖啡名
     let selectedTemp = 'ice'; // 温度选择
     let selectedSugar = 'half'; // 糖度选择
+    let segmentMode = false; // 是否启用咖啡杯抠图
 
     // ==================== UI 更新防抖调度 ====================
     let _uiUpdatePending = false;
@@ -1649,11 +1675,71 @@
         ctx.strokeRect(0, 0, stickerSize, stickerSize);
 
         currentPhotoData = canvas.toDataURL('image/png');
-        closeCamera();
 
+        // 如果启用了抠图模式
+        if (segmentMode) {
+            closeCamera(); // 先关闭相机释放资源
+            showSegmentLoading(true);
+            // 在下一帧执行抠图（避免阻塞 UI）
+            requestAnimationFrame(() => {
+                trySegmentCoffeeCup(currentPhotoData);
+            });
+            return;
+        }
+
+        closeCamera();
         // 显示命名模态框
         document.getElementById('nameModal').classList.add('show');
         document.getElementById('coffeeNameInput').focus();
+    }
+
+    // ==================== 抠图功能 ====================
+    function toggleSegmentMode(e) {
+        e.stopPropagation();
+        segmentMode = !segmentMode;
+        const btn = document.getElementById('segmentToggleBtn');
+        if (segmentMode) {
+            btn.classList.add('segment-toggle-active');
+            btn.innerHTML = '✂️ 抠图 ✓';
+        } else {
+            btn.classList.remove('segment-toggle-active');
+            btn.innerHTML = '✂️ 抠图';
+        }
+    }
+
+    function showSegmentLoading(show) {
+        const overlay = document.getElementById('segmentLoadingOverlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+    }
+
+    function trySegmentCoffeeCup(base64Image) {
+        if (typeof window.AndroidBridge === 'undefined' || !window.AndroidBridge.segmentCoffeeCup) {
+            // 无原生桥接 → 回退普通贴纸
+            showSegmentLoading(false);
+            document.getElementById('nameModal').classList.add('show');
+            document.getElementById('coffeeNameInput').focus();
+            return;
+        }
+
+        // 在后台线程调用原生抠图
+        setTimeout(() => {
+            try {
+                const result = window.AndroidBridge.segmentCoffeeCup(base64Image);
+                showSegmentLoading(false);
+                if (result && result.length > 100) {
+                    currentPhotoData = result;
+                }
+                // 显示命名模态框
+                document.getElementById('nameModal').classList.add('show');
+                document.getElementById('coffeeNameInput').focus();
+            } catch (err) {
+                showSegmentLoading(false);
+                document.getElementById('nameModal').classList.add('show');
+                document.getElementById('coffeeNameInput').focus();
+            }
+        }, 50);
     }
 
     // ==================== 贴纸生成（带删除按钮）====================

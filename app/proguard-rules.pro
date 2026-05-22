@@ -11,6 +11,11 @@
     public <init>(...);
 }
 
+# --- TFLite 抠图分割 ---
+-keep class com.example.coffeediary.CoffeeSegmenter { *; }
+-keep class org.tensorflow.lite.** { *; }
+-dontwarn org.tensorflow.lite.**
+
 # --- 保留行号用于调试堆栈 ---
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

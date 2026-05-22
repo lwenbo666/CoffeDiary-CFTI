@@ -36,6 +36,9 @@ class MainActivity : AppCompatActivity() {
     private var isSplashDone = false
     private var currentPage = "main"
 
+    /** 咖啡杯抠图分割器（懒加载） */
+    private val segmenter by lazy { CoffeeSegmenter(this) }
+
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { handleGalleryResult(it) }
     }
@@ -270,6 +273,30 @@ class MainActivity : AppCompatActivity() {
                         webView.loadUrl("file:///android_asset/main.html")
                     }
                 }
+            }
+        }
+
+        /**
+         * 咖啡杯轮廓抠图：对 Base64 图片做背景移除，返回透明背景 PNG
+         * @param base64Image 输入（支持 data:image/...;base64,... 或纯 Base64）
+         * @return 透明 PNG 的 Base64 字符串，失败返回空字符串
+         */
+        @android.webkit.JavascriptInterface
+        fun segmentCoffeeCup(base64Image: String): String {
+            if (!segmenter.isModelLoaded()) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "抠图模型未就绪", Toast.LENGTH_SHORT).show()
+                }
+                return ""
+            }
+            return try {
+                segmenter.segmentBase64Image(base64Image) ?: ""
+            } catch (e: Exception) {
+                android.util.Log.e("Segment", "抠图失败", e)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "抠图处理失败", Toast.LENGTH_SHORT).show()
+                }
+                ""
             }
         }
     }

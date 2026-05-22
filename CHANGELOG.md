@@ -6,6 +6,8 @@
 - 常喝咖啡 / 所有记录点击贴纸：取消全屏图片查看器，改为从左侧原位丝滑弹出至屏幕中央
 - 弹出贴纸为直角方形，白边框，点击空白处或按 Esc 缩回原位
 - 弹出遮罩背景为透明，周围不变暗
+- **咖啡杯轮廓抠图**：拍照界面新增「✂️ 抠图」开关，启用后使用 TensorFlow Lite + BRIA RMBG-1.4 模型自动识别咖啡杯轮廓并移除背景，生成透明背景贴纸
+- 抠图处理时显示加载动画，处理完毕后进入命名流程
 
 ### 🔧 优化
 - 左侧小贴纸取消圆角，改为直角方形（`border-radius` 移除）
@@ -17,6 +19,9 @@
 
 ### 🚀 技术
 - JS 兜底超时：`body.app-ready` 5 秒未注入时自动触发动画，防止永远卡住
+- TFLite 集成：RMBG-1.4 背景移除模型，GPU → NNAPI → CPU 三级委托回退
+- `CoffeeSegmenter.kt`：原生 Kotlin 分割推理，`segmentCoffeeCup()` JS 桥接
+- `download_model.py`：从 HuggingFace 下载 ONNX 并转为 TFLite，放入 assets
 
 ---
 
