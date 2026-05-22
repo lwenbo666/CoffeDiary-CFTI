@@ -1553,26 +1553,50 @@
         });
     }
 
-    // ========== 月份导航 ==========
-    function prevMonth() {
-        if (_currentMonth === 0) {
-            _currentMonth = 11;
-            _currentYear--;
+    // ========== 月份导航（带滑出→换月→滑入动画）==========
+    function navigateMonth(dir) {
+        // dir < 0 = 上一月, dir > 0 = 下一月
+        if (dir < 0) {
+            // 上一月
+            if (_currentMonth === 0) {
+                _currentMonth = 11;
+                _currentYear--;
+            } else {
+                _currentMonth--;
+            }
         } else {
-            _currentMonth--;
+            // 下一月
+            if (_currentYear >= _todayYear && _currentMonth >= _todayMonth) return;
+            if (_currentMonth === 11) {
+                _currentMonth = 0;
+                _currentYear++;
+            } else {
+                _currentMonth++;
+            }
         }
-        renderFullMonth();
+
+        const card = document.getElementById('calendarCard');
+        const cls = dir < 0 ? 'swipe-right' : 'swipe-left';
+
+        // 1. 滑出
+        card.classList.add(cls);
+        setTimeout(() => {
+            card.classList.remove(cls);
+            card.classList.add('swipe-reset');
+            // 2. 换月（在 swipe-reset 过渡期间静默重建 DOM）
+            renderFullMonth();
+            setTimeout(() => card.classList.remove('swipe-reset'), 420);
+        }, 180);
+    }
+
+    function prevMonth() {
+        if (!_isExpanded) return;
+        navigateMonth(-1);
     }
 
     function nextMonth() {
-        if (_currentYear >= _todayYear && _currentMonth >= _todayMonth) return;
-        if (_currentMonth === 11) {
-            _currentMonth = 0;
-            _currentYear++;
-        } else {
-            _currentMonth++;
-        }
-        renderFullMonth();
+        if (!_isExpanded) return;
+        navigateMonth(1);
     }
 
     // ========== 工具函数 ==========
@@ -2777,25 +2801,10 @@
             const absY = Math.abs(deltaY);
 
             if (absX > 50 && absX > absY) {
-                const card = document.getElementById('calendarCard');
                 if (deltaX > 0) {
-                    // 右滑 → 上一月
-                    card.classList.add('swipe-right');
-                    setTimeout(() => {
-                        card.classList.remove('swipe-right');
-                        card.classList.add('swipe-reset');
-                        prevMonth();
-                        setTimeout(() => card.classList.remove('swipe-reset'), 400);
-                    }, 180);
+                    navigateMonth(-1);    // 右滑 → 上一月
                 } else {
-                    // 左滑 → 下一月
-                    card.classList.add('swipe-left');
-                    setTimeout(() => {
-                        card.classList.remove('swipe-left');
-                        card.classList.add('swipe-reset');
-                        nextMonth();
-                        setTimeout(() => card.classList.remove('swipe-reset'), 400);
-                    }, 180);
+                    navigateMonth(1);     // 左滑 → 下一月
                 }
             }
         });
