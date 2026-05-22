@@ -215,7 +215,7 @@
             width: 350%;
             height: auto;
             aspect-ratio: 5 / 6;
-            border-radius: 16px;
+            border-radius: 0;
             border: 4px solid white;
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
             overflow: hidden;
@@ -292,6 +292,119 @@
             font-weight: bold;
             color: var(--accent);
             background: rgba(141, 110, 99, 0.1);
+        }
+
+        /* ==================== 七日视图单元格（紧凑，贴纸靠 overflow 自然溢出） ==================== */
+        .calendar-grid.week-view {
+            /* 不再全局预留 padding-bottom，避免大段空白 */
+        }
+        .calendar-grid.week-view .calendar-day {
+            aspect-ratio: auto;
+            min-height: 64px;
+            overflow: visible;
+        }
+
+        /* ==================== 统一日历内容 ==================== */
+        .calendar-content {
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: max-height;
+            contain: layout style;
+        }
+
+        /* 月导航栏（折叠时隐藏，展开时渐入） */
+        .month-nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            margin-bottom: 0;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.35s ease,
+                        margin-bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .month-nav-bar.visible {
+            max-height: 44px;
+            opacity: 1;
+            margin-bottom: 8px;
+        }
+
+        /* ==================== 展开/收起按钮 ==================== */
+        .expand-calendar-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            border: none;
+            background: rgba(141, 110, 99, 0.08);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .expand-calendar-btn:hover {
+            background: rgba(141, 110, 99, 0.15);
+        }
+        .expand-calendar-btn:active {
+            transform: scale(0.95);
+        }
+        .expand-calendar-btn .icon-collapse {
+            transform: rotate(180deg);
+            transition: transform 0.3s ease;
+        }
+
+        /* ==================== 月导航按钮 ==================== */
+        .month-nav-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: none;
+            background: rgba(141, 110, 99, 0.07);
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+        }
+        .month-nav-btn:hover {
+            background: rgba(141, 110, 99, 0.15);
+        }
+        .month-nav-btn:active {
+            transform: scale(0.9);
+        }
+        .month-nav-btn:disabled {
+            opacity: 0.25;
+            pointer-events: none;
+        }
+
+        /* ==================== 日历卡片月份滑动 ==================== */
+        .calendar-card {
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .calendar-card.swipe-left {
+            transform: translateX(-30px);
+            opacity: 0.6;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        .calendar-card.swipe-right {
+            transform: translateX(30px);
+            opacity: 0.6;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        .calendar-card.swipe-reset {
+            transform: translateX(0);
+            opacity: 1;
+            transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.4s ease;
         }
 
         /* ==================== 模态框 ==================== */
@@ -516,21 +629,6 @@
         }
         .coffee-sticker:active {
             transform: scale(0.95);
-        }
-
-        /* ==================== 抠图开关按钮 ==================== */
-        .segment-toggle-active {
-            background: #8D6E63 !important;
-            color: white !important;
-            border-color: #8D6E63 !important;
-        }
-
-        /* ==================== 抠图处理加载动画 ==================== */
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .animate-spin {
-            animation: spin 0.8s linear infinite;
         }
 
         /* ==================== 贴纸展开遮罩 + 丝滑动画 ==================== */
@@ -767,18 +865,38 @@
         <div class="page-content">
             <!-- 头部 -->
             <header class="mb-6 fade-in-up" style="animation-delay: 0.1s;">
-                <h1 class="text-3xl font-bold tracking-tight">近7天</h1>
+                <h1 id="monthTitle" class="text-2xl font-bold tracking-tight">5月 2026</h1>
                 <p id="weekRange" class="text-sm text-gray-500 mt-0.5"></p>
             </header>
 
             <!-- 日历卡片 -->
-            <div class="bg-white rounded-[2rem] shadow-sm p-3 mb-6 fade-in-up" style="animation-delay: 0.2s;">
-                <div class="flex justify-between text-xs text-gray-400 mb-4 px-2">
+            <div id="calendarCard" class="bg-white rounded-[2rem] shadow-sm p-3 mb-6 fade-in-up calendar-card" style="animation-delay: 0.2s;">
+
+                <!-- 星期标题行 -->
+                <div class="flex justify-between text-xs text-gray-400 mb-2 px-2">
                     <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
                 </div>
-                <div id="calendarGrid" class="calendar-grid relative">
-                    <!-- 日期将通过JS动态生成 -->
+
+                <!-- 月导航栏（折叠时隐藏，展开时显示） -->
+                <div id="monthNavBar" class="month-nav-bar">
+                    <button id="monthPrev" class="month-nav-btn">‹</button>
+                    <span id="monthViewTitle" class="font-bold text-base"></span>
+                    <button id="monthNext" class="month-nav-btn">›</button>
                 </div>
+
+                <!-- 统一日历网格（折叠=七日，展开=整月） -->
+                <div id="calendarContent" class="calendar-content">
+                    <div id="calendarGrid" class="calendar-grid relative"></div>
+                </div>
+
+                <!-- 展开/收起按钮 -->
+                <div class="text-center mt-2">
+                    <button id="toggleCalendarBtn" class="expand-calendar-btn">
+                        <span id="toggleBtnText">展开月历</span>
+                        <svg id="toggleBtnIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                </div>
+
             </div>
 
             <!-- 常喝咖啡列表 -->
@@ -914,9 +1032,6 @@
             <button onclick="closeCamera()" class="text-gray-500"><i class="fa-solid fa-times"></i></button>
             <h3 class="font-bold">记录咖啡</h3>
             <div class="flex items-center gap-2">
-                <button onclick="toggleSegmentMode(event)" id="segmentToggleBtn"
-                        class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-500 transition-all"
-                        title="咖啡杯轮廓抠图">✂️ 抠图</button>
                 <button onclick="capturePhoto()" class="text-[#8D6E63] font-bold">完成</button>
             </div>
         </div>
@@ -926,11 +1041,6 @@
         </div>
         <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center cursor-pointer" onclick="capturePhoto()">
             <div class="w-12 h-12 bg-[#8D6E63] rounded-full"></div>
-        </div>
-        <!-- 抠图处理加载层 -->
-        <div id="segmentLoadingOverlay" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 hidden">
-            <div class="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mb-3"></div>
-            <span class="text-white text-sm font-medium">AI 抠图中...</span>
         </div>
     </div>
 </div>
@@ -992,7 +1102,6 @@
     let deleteCoffeeName = null; // 按名称批量删除的咖啡名
     let selectedTemp = 'ice'; // 温度选择
     let selectedSugar = 'half'; // 糖度选择
-    let segmentMode = false; // 是否启用咖啡杯抠图
 
     // ==================== UI 更新防抖调度 ====================
     let _uiUpdatePending = false;
@@ -1003,6 +1112,7 @@
             updateFrequentCoffees();
             updateAllRecords();
             updateCFTIDisplay();
+            renderCalendar();  // 统一渲染日历（折叠=七日+贴纸，展开=月视图+贴纸）
             // 只有统计页已展示过才更新图表，避免在首页就初始化 3 个 Chart.js 实例
             if (_statsPageReady) {
                 updateStatsPage();
@@ -1145,22 +1255,44 @@
     let todayCellId = '';       // 今天格子的 id
     let _currentYear = 0;
     let _currentMonth = 0;      // 0-11
+    let _todayYear = 0;
+    let _todayMonth = 0;
+    let _isExpanded = false;    // 月视图是否已展开
+    let _weekViewCollapsedHeight = 200; // 七日视图折叠态高度（含贴纸溢出空间）
+
+    const _monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    const _weekdayNames = ['一','二','三','四','五','六','日'];
 
     function initCalendar() {
         const now = new Date();
-        _currentYear = now.getFullYear();
-        _currentMonth = now.getMonth(); // 0-11
+        _todayYear = now.getFullYear();
+        _todayMonth = now.getMonth();
         todayDay = now.getDate();
 
-        // 当月天数
-        const daysInMonth = new Date(_currentYear, _currentMonth + 1, 0).getDate();
-        // 当月1号是星期几（0=周日, 1=周一 ... 6=周六）
-        let firstDayOfWeek = new Date(_currentYear, _currentMonth, 1).getDay();
-        // 转换为周一起始（周一=0 ... 周日=6）
-        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+        // 初始显示当前月
+        _currentYear = _todayYear;
+        _currentMonth = _todayMonth;
 
-        // 本周范围文字
-        const dayOfWeek = now.getDay() || 7; // 周一=1 ... 周日=7
+        // 统一渲染（默认折叠=七日+贴纸）
+        renderCalendar();
+    }
+
+    // ========== 统一日历渲染（折叠=七日+贴纸，展开=月视图+贴纸）==========
+    function renderCalendar() {
+        if (_isExpanded) {
+            renderFullMonth();
+        } else {
+            renderWeekView();
+        }
+        // 更新头部标题
+        updateHeaderTitle();
+    }
+
+    function updateHeaderTitle() {
+        const now = new Date();
+        document.getElementById('monthTitle').textContent =
+            _monthNames[_currentMonth] + ' ' + _currentYear;
+        const dayOfWeek = now.getDay() || 7;
         const monday = new Date(now);
         monday.setDate(now.getDate() - dayOfWeek + 1);
         const sunday = new Date(monday);
@@ -1168,55 +1300,308 @@
         document.getElementById('weekRange').textContent =
             (monday.getMonth() + 1) + '月' + monday.getDate() + '日 - ' +
             (sunday.getMonth() + 1) + '月' + sunday.getDate() + '日';
+    }
 
-        const calendarGrid = document.getElementById('calendarGrid');
-        calendarGrid.innerHTML = '';
+    // ========== 折叠态：七日视图（带贴纸） ==========
+    function renderWeekView() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        grid.classList.add('week-view');
+
+        const now = new Date();
+        const dayOfWeek = now.getDay() || 7;
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - dayOfWeek + 1);
+
+        const d = new Date(monday);
+        for (let i = 0; i < 7; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day';
+            cell.textContent = d.getDate();
+
+            const dateStr = d.getFullYear() + '-' +
+                String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0');
+
+            cell.id = 'wcell-' + dateStr;
+
+            // 今天高亮
+            if (d.getDate() === todayDay &&
+                d.getMonth() === _todayMonth &&
+                d.getFullYear() === _todayYear) {
+                cell.classList.add('today');
+                todayCellId = cell.id;
+            } else if (d < new Date(_todayYear, _todayMonth, todayDay)) {
+                cell.classList.add('past');
+            }
+
+            grid.appendChild(cell);
+            d.setDate(d.getDate() + 1);
+        }
+
+        // 放置贴纸到七日格子上
+        placeStickersForWeekView();
+
+        // 固定紧凑折叠高度，贴纸靠 overflow:visible 自然溢出显示
+        const content = document.getElementById('calendarContent');
+        content.style.maxHeight = '108px';
+        content.style.overflow = 'visible';
+
+        // 隐藏月导航
+        document.getElementById('monthNavBar').classList.remove('visible');
+
+        // 更新按钮文字
+        document.getElementById('toggleBtnText').textContent = '展开月历';
+        const icon = document.getElementById('toggleBtnIcon');
+        icon.innerHTML = '<polyline points="6 9 12 15 18 9"/>';
+    }
+
+    function placeStickersForWeekView() {
+        // 清除所有星期格子的贴纸
+        const cells = document.querySelectorAll('#calendarGrid .calendar-day');
+        cells.forEach(c => {
+            // 保留文字（日期数字）
+            const dayNum = c.textContent;
+            c.innerHTML = '';
+            c.textContent = dayNum;
+        });
+
+        // 为每个有记录的日期放置贴纸
+        coffeeRecords.forEach(r => {
+            if (!r.date) return;
+            const cellId = 'wcell-' + r.date;
+            const cell = document.getElementById(cellId);
+            if (cell) {
+                addStickerToCalendar(r.photo, r.name, r.id, r.date);
+            }
+        });
+    }
+
+    // ========== 展开态：整月视图 ==========
+    function renderFullMonth() {
+        const isThisMonth = (_currentYear === _todayYear && _currentMonth === _todayMonth);
+
+        // 更新月视图标题
+        document.getElementById('monthViewTitle').textContent =
+            _monthNames[_currentMonth] + ' ' + _currentYear;
+
+        // 显示月导航
+        document.getElementById('monthNavBar').classList.add('visible');
+
+        // 更新按钮文字
+        document.getElementById('toggleBtnText').textContent = '收起';
+        const icon = document.getElementById('toggleBtnIcon');
+        icon.innerHTML = '<polyline points="18 15 12 9 6 15"/>';
+
+        // 禁用/启用 next 按钮
+        const nextBtn = document.getElementById('monthNext');
+        if (_currentYear >= _todayYear && _currentMonth >= _todayMonth) {
+            nextBtn.disabled = true;
+        } else {
+            nextBtn.disabled = false;
+        }
+
+        // 当月天数
+        const daysInMonth = new Date(_currentYear, _currentMonth + 1, 0).getDate();
+        let firstDayOfWeek = new Date(_currentYear, _currentMonth, 1).getDay();
+        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        grid.classList.remove('week-view');
 
         // 空白占位
         for (let i = 0; i < firstDayOfWeek; i++) {
             const emptyDay = document.createElement('div');
             emptyDay.className = 'calendar-day empty';
-            calendarGrid.appendChild(emptyDay);
+            grid.appendChild(emptyDay);
         }
 
-        // 日期格子——全部加 id，方便按日期定位贴纸
+        // 日期格子
         for (let day = 1; day <= daysInMonth; day++) {
             const dayElement = document.createElement('div');
             dayElement.className = 'calendar-day';
             dayElement.textContent = day;
             dayElement.id = 'cell-' + day;
 
-            if (day < todayDay) {
+            if (isThisMonth) {
+                if (day < todayDay) dayElement.classList.add('past');
+                if (day === todayDay) {
+                    dayElement.classList.add('today');
+                    todayCellId = 'cell-' + day;
+                }
+            } else if (_currentYear < _todayYear || (_currentYear === _todayYear && _currentMonth < _todayMonth)) {
                 dayElement.classList.add('past');
             }
 
-            if (day === todayDay) {
-                dayElement.classList.add('today');
-                todayCellId = 'cell-' + day;
-            }
+            grid.appendChild(dayElement);
+        }
 
-            calendarGrid.appendChild(dayElement);
+        placeStickersForCurrentMonth();
+
+        // 设置展开高度
+        const content = document.getElementById('calendarContent');
+        content.style.maxHeight = 'none';
+        content.style.overflow = 'visible';
+    }
+
+    // ========== 展开/收起切换 ==========
+    function toggleCalendar() {
+        if (_isExpanded) {
+            collapseCalendar();
+        } else {
+            expandCalendar();
         }
     }
 
-    // 根据日期字符串（如 "2026-05-20"）获取当月日历格子的 id，非当月返回 null
+    function expandCalendar() {
+        if (_isExpanded) return;
+        _isExpanded = true;
+
+        // 重置到当前月
+        _currentYear = _todayYear;
+        _currentMonth = _todayMonth;
+
+        const content = document.getElementById('calendarContent');
+        // 固定七日视图紧凑高度作为展开起点
+        const collapsedHeight = 108;
+
+        // 先锁定折叠高度，再渲染整月
+        content.style.maxHeight = collapsedHeight + 'px';
+        content.style.overflow = 'hidden';
+
+        renderFullMonth();
+
+        // renderFullMonth 会设 maxHeight='none'，强制回到折叠高度
+        content.style.maxHeight = collapsedHeight + 'px';
+
+        // 展开用标准过渡时间
+        content.style.transitionDuration = '0.5s';
+
+        // 强制回流后丝滑展开
+        content.offsetHeight;
+        requestAnimationFrame(() => {
+            content.style.maxHeight = '800px';
+            // 展开完成后解除高度限制
+            const onEnd = () => {
+                content.removeEventListener('transitionend', onEnd);
+                content.style.maxHeight = 'none';
+                content.style.overflow = 'visible';
+            };
+            content.addEventListener('transitionend', onEnd);
+        });
+    }
+
+    function collapseCalendar() {
+        if (!_isExpanded) return;
+
+        const content = document.getElementById('calendarContent');
+        const target = 108;
+
+        // 提前收起月导航，让导航和日历内容并行过渡
+        document.getElementById('monthNavBar').classList.remove('visible');
+
+        // 第 1 步：锁住当前高度，禁止过渡
+        const startHeight = content.offsetHeight;
+        content.style.transition = 'none';
+        content.style.maxHeight = startHeight + 'px';
+        content.style.overflow = 'hidden';
+
+        // 第 2 步：在 overflow:hidden 遮挡下静默切换到七日视图
+        _isExpanded = false;
+        _currentYear = _todayYear;
+        _currentMonth = _todayMonth;
+        renderWeekView();
+
+        // renderWeekView 会改成 108px + overflow:visible，强制恢复锁定状态
+        content.style.transition = 'none';
+        content.style.maxHeight = startHeight + 'px';
+        content.style.overflow = 'hidden';
+
+        // 双 rAF 确保锁定帧渲染后再开启动画
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                content.style.transition = 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+                content.style.maxHeight = target + 'px';
+
+                const onEnd = () => {
+                    content.removeEventListener('transitionend', onEnd);
+                    content.style.transition = '';
+                    content.style.maxHeight = target + 'px';
+                    content.style.overflow = 'visible';
+                };
+                content.addEventListener('transitionend', onEnd);
+            });
+        });
+    }
+
+    // ========== 贴纸放置（月视图） ==========
+    function placeStickersForCurrentMonth() {
+        const dateMap = {};
+        coffeeRecords.forEach(r => {
+            if (getCellIdForDate(r.date)) {
+                dateMap[r.date] = r;
+            }
+        });
+        const cells = document.querySelectorAll('#calendarGrid .calendar-day:not(.empty)');
+        cells.forEach(c => {
+            c.innerHTML = '';
+            c.textContent = parseInt(c.id.replace('cell-', ''));
+        });
+        Object.values(dateMap).forEach(r => {
+            addStickerToCalendar(r.photo, r.name, r.id, r.date);
+        });
+    }
+
+    // ========== 月份导航 ==========
+    function prevMonth() {
+        if (_currentMonth === 0) {
+            _currentMonth = 11;
+            _currentYear--;
+        } else {
+            _currentMonth--;
+        }
+        renderFullMonth();
+    }
+
+    function nextMonth() {
+        if (_currentYear >= _todayYear && _currentMonth >= _todayMonth) return;
+        if (_currentMonth === 11) {
+            _currentMonth = 0;
+            _currentYear++;
+        } else {
+            _currentMonth++;
+        }
+        renderFullMonth();
+    }
+
+    // ========== 工具函数 ==========
     function getCellIdForDate(dateStr) {
         if (!dateStr) return null;
         const d = new Date(dateStr);
-        if (d.getFullYear() !== _currentYear || d.getMonth() !== _currentMonth) {
-            return null;
+        // 展开态：检查是否在当前展示的月份
+        if (_isExpanded) {
+            if (d.getFullYear() !== _currentYear || d.getMonth() !== _currentMonth) {
+                return null;
+            }
+            return 'cell-' + d.getDate();
         }
-        return 'cell-' + d.getDate();
+        // 折叠态：检查是否在当前展示的星期范围
+        const cellId = 'wcell-' + dateStr;
+        return document.getElementById(cellId) ? cellId : null;
     }
 
-    // 根据日期刷新贴纸格子：有记录则显示最新贴纸，无记录则恢复数字
     function refreshCellSticker(dateStr) {
+        if (!_isExpanded) {
+            // 折叠态直接重新渲染
+            renderCalendar();
+            return;
+        }
         const cellId = getCellIdForDate(dateStr);
         if (!cellId) return;
         const cell = document.getElementById(cellId);
         if (!cell) return;
 
-        // 找出该日期的所有记录
         const dayRecords = coffeeRecords.filter(r => r.date === dateStr);
         if (dayRecords.length > 0) {
             const latest = dayRecords[dayRecords.length - 1];
@@ -1676,70 +2061,10 @@
 
         currentPhotoData = canvas.toDataURL('image/png');
 
-        // 如果启用了抠图模式
-        if (segmentMode) {
-            closeCamera(); // 先关闭相机释放资源
-            showSegmentLoading(true);
-            // 在下一帧执行抠图（避免阻塞 UI）
-            requestAnimationFrame(() => {
-                trySegmentCoffeeCup(currentPhotoData);
-            });
-            return;
-        }
-
         closeCamera();
         // 显示命名模态框
         document.getElementById('nameModal').classList.add('show');
         document.getElementById('coffeeNameInput').focus();
-    }
-
-    // ==================== 抠图功能 ====================
-    function toggleSegmentMode(e) {
-        e.stopPropagation();
-        segmentMode = !segmentMode;
-        const btn = document.getElementById('segmentToggleBtn');
-        if (segmentMode) {
-            btn.classList.add('segment-toggle-active');
-            btn.innerHTML = '✂️ 抠图 ✓';
-        } else {
-            btn.classList.remove('segment-toggle-active');
-            btn.innerHTML = '✂️ 抠图';
-        }
-    }
-
-    function showSegmentLoading(show) {
-        const overlay = document.getElementById('segmentLoadingOverlay');
-        if (overlay) {
-            overlay.style.display = show ? 'flex' : 'none';
-        }
-    }
-
-    function trySegmentCoffeeCup(base64Image) {
-        if (typeof window.AndroidBridge === 'undefined' || !window.AndroidBridge.segmentCoffeeCup) {
-            // 无原生桥接 → 回退普通贴纸
-            showSegmentLoading(false);
-            document.getElementById('nameModal').classList.add('show');
-            document.getElementById('coffeeNameInput').focus();
-            return;
-        }
-
-        // 在后台线程调用原生抠图
-        setTimeout(() => {
-            try {
-                const result = window.AndroidBridge.segmentCoffeeCup(base64Image);
-                showSegmentLoading(false);
-                if (result && result.length > 100) {
-                    currentPhotoData = result;
-                }
-                // 显示命名模态框
-                document.getElementById('nameModal').classList.add('show');
-                document.getElementById('coffeeNameInput').focus();
-            } catch (err) {
-                showSegmentLoading(false);
-                document.getElementById('nameModal').classList.add('show');
-                document.getElementById('coffeeNameInput').focus();
-            }
-        }, 50);
     }
 
     // ==================== 贴纸生成（带删除按钮）====================
@@ -2404,23 +2729,75 @@
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 initCalendar();
-                // 遍历所有当月记录，将贴纸放到对应日期的格子上
-                if (coffeeRecords.length > 0) {
-                    // 按日期分组，每个日期只显示最新一条记录的贴纸
-                    const dateMap = {};
-                    coffeeRecords.forEach(r => {
-                        if (getCellIdForDate(r.date)) {
-                            dateMap[r.date] = r; // 后面的记录覆盖前面的，保留最新
+                // 如果没有任何记录，自动展开月历并显示示例贴纸
+                if (coffeeRecords.length === 0) {
+                    expandCalendar();
+                    // expandCalendar 动画完成后再放 demo 贴纸
+                    setTimeout(() => {
+                        const cell = document.getElementById(todayCellId);
+                        if (cell) {
+                            addDemoSticker();
                         }
-                    });
-                    Object.values(dateMap).forEach(r => {
-                        addStickerToCalendar(r.photo, r.name, r.id, r.date);
-                    });
-                    // 如果今天没有贴纸，保留空状态（用户可以在今天拍照）
-                } else {
-                    addDemoSticker();
+                    }, 550);
                 }
             });
+        });
+
+        // ===== 展开/收起按钮 =====
+        document.getElementById('toggleCalendarBtn').addEventListener('click', toggleCalendar);
+
+        // ===== 月导航按钮 =====
+        document.getElementById('monthPrev').addEventListener('click', prevMonth);
+        document.getElementById('monthNext').addEventListener('click', nextMonth);
+
+        // ===== 触摸滑动切换月份（仅在月视图展开时生效） =====
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const calendarCard = document.getElementById('calendarCard');
+
+        calendarCard.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        calendarCard.addEventListener('touchmove', function(e) {
+            if (!_isExpanded) return;
+            const deltaX = e.touches[0].clientX - touchStartX;
+            const deltaY = e.touches[0].clientY - touchStartY;
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        calendarCard.addEventListener('touchend', function(e) {
+            if (!_isExpanded) return;
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
+
+            if (absX > 50 && absX > absY) {
+                const card = document.getElementById('calendarCard');
+                if (deltaX > 0) {
+                    // 右滑 → 上一月
+                    card.classList.add('swipe-right');
+                    setTimeout(() => {
+                        card.classList.remove('swipe-right');
+                        card.classList.add('swipe-reset');
+                        prevMonth();
+                        setTimeout(() => card.classList.remove('swipe-reset'), 400);
+                    }, 180);
+                } else {
+                    // 左滑 → 下一月
+                    card.classList.add('swipe-left');
+                    setTimeout(() => {
+                        card.classList.remove('swipe-left');
+                        card.classList.add('swipe-reset');
+                        nextMonth();
+                        setTimeout(() => card.classList.remove('swipe-reset'), 400);
+                    }, 180);
+                }
+            }
         });
 
         // 统计页 Chart.js 延迟到首次切换到 statsPage 时才初始化
