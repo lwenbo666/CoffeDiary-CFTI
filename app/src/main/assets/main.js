@@ -1554,6 +1554,7 @@
                 scales: {
                     y: {
                         beginAtZero: true,
+                        suggestedMax: maxVal <= 3 ? 5 : undefined,
                         ticks: { stepSize: 1, font: { size: 10, weight: '500' }, color: '#8D6E63' },
                         grid: { color: 'rgba(141,110,99,0.08)' },
                         border: { display: false }

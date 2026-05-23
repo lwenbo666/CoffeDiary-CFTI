@@ -409,6 +409,39 @@
         }, 2000);
     }
 
+    // ==================== 键盘遮挡输入框处理 ====================
+    function setupKeyboardHandling() {
+        const modal = document.getElementById('editModal');
+        const modalContent = modal.querySelector('.modal-content');
+        const focusable = modal.querySelectorAll('.form-input, .form-textarea');
+
+        focusable.forEach(function(el) {
+            el.addEventListener('focus', function() {
+                // 延迟等键盘弹起后再滚动
+                setTimeout(function() {
+                    // 获取元素在 modal-content 中的相对位置并滚动
+                    var rect = el.getBoundingClientRect();
+                    var modalRect = modalContent.getBoundingClientRect();
+                    var offset = rect.top - modalRect.top - 100;
+                    if (offset > 0) {
+                        modalContent.scrollBy({ top: offset, behavior: 'smooth' });
+                    }
+                }, 350);
+            });
+        });
+
+        // 监听窗口 resize（键盘收起时恢复滚动）
+        var lastHeight = window.innerHeight;
+        window.addEventListener('resize', function() {
+            var newHeight = window.innerHeight;
+            // 键盘收起时（视图变高），保持滚动位置
+            if (newHeight > lastHeight && modal.classList.contains('show')) {
+                // 键盘收起不做额外处理，保持当前滚动即可
+            }
+            lastHeight = newHeight;
+        });
+    }
+
     // ==================== 启动 ====================
     document.addEventListener('DOMContentLoaded', () => {
         init();
@@ -459,6 +492,9 @@
                 }
             }
         }, { passive: true });
+
+        // ==================== 键盘遮挡输入框处理 ====================
+        setupKeyboardHandling();
 
         // 页面加载完成后显示
         requestAnimationFrame(() => {
