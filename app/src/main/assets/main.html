@@ -736,6 +736,39 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* ==================== 贴纸展开后的编辑按钮（右上角相机图标） ==================== */
+        .sticker-expand-edit-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(141, 110, 99, 0.82);
+            color: white;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background 0.2s;
+            z-index: 2;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, background 0.2s;
+        }
+        .sticker-expand-overlay.active .sticker-expand-edit-btn {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .sticker-expand-edit-btn:active {
+            transform: scale(0.85);
+            background: rgba(141, 110, 99, 1);
+        }
+
         /* ==================== 视频播放器 - 隐藏播放按钮 ==================== */
         video::-webkit-media-controls {
             display: none !important;

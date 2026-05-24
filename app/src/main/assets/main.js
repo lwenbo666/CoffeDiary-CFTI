@@ -6,6 +6,7 @@
     let deleteCoffeeName = null; // 按名称批量删除的咖啡名
     let selectedTemp = 'ice'; // 温度选择
     let selectedSugar = 'half'; // 糖度选择
+    let _editingPhotoRecordId = null; // 正在更换照片的记录ID
 
     // ==================== UI 更新防抖调度 ====================
     let _uiUpdatePending = false;
@@ -748,7 +749,7 @@
             <div class="coffee-record-item" onclick="if(!event.target.closest('.name-edit-group') && !event.target.closest('.delete-record-btn') && !event.target.closest('img'))this.classList.toggle('delete-visible')">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1">
-                        <img src="${record.photo}" class="coffee-sticker mr-3" alt="${record.name}" onclick="openStickerExpand(this,'${record.name.replace(/'/g, "\\'")}');event.stopPropagation()">
+                        <img src="${record.photo}" class="coffee-sticker mr-3" alt="${record.name}" onclick="openStickerExpand(this,'${record.name.replace(/'/g, "\\'")}',${record.id});event.stopPropagation()">
                         <div>
                             <div class="font-bold flex items-center gap-1 name-edit-group">
                                 <span class="record-name-text">${record.name}</span>
@@ -1119,7 +1120,7 @@
 
     // ==================== 删除功能 ====================
     // ==================== 贴纸展开动画（从小位置丝滑弹到中央）====================
-    function openStickerExpand(el, name) {
+    function openStickerExpand(el, name, id) {
         if (!el) return;
         const src = el.src || (el.querySelector('img') ? el.querySelector('img').src : '');
         if (!src) return;
@@ -1129,6 +1130,7 @@
         overlay.innerHTML = '';
         overlay._originalRect = rect;
         overlay._originalEl = el;
+        overlay._expandRecordId = id || null;
 
         const clone = document.createElement('div');
         clone.className = 'sticker-expand-clone';
@@ -1141,6 +1143,19 @@
         cloneImg.src = src;
         cloneImg.alt = name || '';
         clone.appendChild(cloneImg);
+
+        // 编辑按钮（右上角相机图标）
+        if (id) {
+            const editBtn = document.createElement('div');
+            editBtn.className = 'sticker-expand-edit-btn';
+            editBtn.innerHTML = '<i class="fas fa-camera-retro"></i>';
+            editBtn.title = '更换照片';
+            editBtn.onclick = function(e) {
+                e.stopPropagation();
+                openGalleryForRecord(id);
+            };
+            clone.appendChild(editBtn);
+        }
 
         if (name) {
             const tag = document.createElement('div');
@@ -1187,6 +1202,48 @@
             overlay.innerHTML = '';
             if (originalEl) originalEl.style.opacity = '';
         }
+    }
+    // ==================== 更换记录照片（相册） ====================
+    function openGalleryForRecord(id) {
+        _editingPhotoRecordId = id;
+        if (window.AndroidBridge && window.AndroidBridge.openGallery) {
+            window.AndroidBridge.openGallery();
+            return;
+        }
+        // 浏览器降级：使用 file input
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) { _editingPhotoRecordId = null; return; }
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const base64 = ev.target.result.split(',')[1];
+                if (base64) onGalleryImage(base64);
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    }
+
+    // AndroidBridge 回调：相册选图完成后更新记录照片
+    function onGalleryImage(base64) {
+        if (_editingPhotoRecordId === null) return;
+        const newPhoto = 'data:image/jpeg;base64,' + base64;
+        // 更新原生数据库
+        if (window.AndroidBridge && window.AndroidBridge.updateRecordPhoto) {
+            window.AndroidBridge.updateRecordPhoto(_editingPhotoRecordId, newPhoto);
+        }
+        // 更新本地数组
+        const record = coffeeRecords.find(r => r.id === _editingPhotoRecordId);
+        if (record) {
+            record.photo = newPhoto;
+        }
+        _editingPhotoRecordId = null;
+        // 关闭展开遮罩
+        closeStickerExpand();
+        _scheduleUIUpdate();
     }
     // ==================== 辅助函数 ====================
     function getTempLabel(temp) {

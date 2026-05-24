@@ -69,8 +69,8 @@
             return;
         }
 
-        // 每页 2 个配方，分组
-        const ITEMS_PER_PAGE = 2;
+        // 每页 6 个配方（2列 x 3行），分组
+        const ITEMS_PER_PAGE = 6;
         const groups = [];
         for (let i = 0; i < filtered.length; i += ITEMS_PER_PAGE) {
             groups.push(filtered.slice(i, i + ITEMS_PER_PAGE));
@@ -132,7 +132,7 @@
         const pages = container.children;
         if (index >= 0 && index < pages.length) {
             currentPage = index;
-            pages[index].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            pages[index].scrollIntoView({ behavior: 'smooth', block: 'start' });
             updateActiveIndicator();
         }
     }
@@ -456,41 +456,35 @@
             });
         });
 
-        // 翻页滚动监听
+        // 垂直滚动监听，更新页面指示器
         const container = document.getElementById('recipesContainer');
         let scrollTimeout;
         container.addEventListener('scroll', () => {
+            if (container.classList.contains('empty')) return;
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
-                const pageWidth = container.clientWidth;
-                if (pageWidth <= 0) return;
-                const newPage = Math.round(container.scrollLeft / pageWidth);
-                if (newPage !== currentPage && newPage >= 0 && newPage < totalPages) {
-                    currentPage = newPage;
+                const containerHeight = container.clientHeight;
+                if (containerHeight <= 0) return;
+                const pages = container.children;
+                let bestPage = 0;
+                let bestRatio = 0;
+                for (let i = 0; i < pages.length; i++) {
+                    const rect = pages[i].getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    const visibleTop = Math.max(rect.top, containerRect.top);
+                    const visibleBottom = Math.min(rect.bottom, containerRect.bottom);
+                    const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+                    const ratio = visibleHeight / Math.max(1, rect.height);
+                    if (ratio > bestRatio) {
+                        bestRatio = ratio;
+                        bestPage = i;
+                    }
+                }
+                if (bestPage !== currentPage) {
+                    currentPage = bestPage;
                     updateActiveIndicator();
                 }
-            }, 50);
-        }, { passive: true });
-
-        // 触摸滑动检测
-        let touchStartX = 0;
-        container.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-        }, { passive: true });
-
-        container.addEventListener('touchend', (e) => {
-            const diffX = touchStartX - e.changedTouches[0].clientX;
-            // 滑动超过 50px 才触发翻页
-            if (Math.abs(diffX) > 50) {
-                const container = document.getElementById('recipesContainer');
-                const pageWidth = container.clientWidth;
-                const targetPage = Math.round(container.scrollLeft / pageWidth);
-                if (targetPage >= 0 && targetPage < totalPages) {
-                    currentPage = targetPage;
-                    goToPage(currentPage);
-                    updateActiveIndicator();
-                }
-            }
+            }, 100);
         }, { passive: true });
 
         // ==================== 键盘遮挡输入框处理 ====================

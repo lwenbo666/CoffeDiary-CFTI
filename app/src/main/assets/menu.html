@@ -26,15 +26,17 @@
             -webkit-user-select: text;
         }
 
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(160deg, #FFF8F0 0%, #E8DDD3 35%, #F2EAE0 55%, #FFF5ED 75%, #EDE0D4 100%);
             color: var(--text-primary);
             margin: 0;
             padding: 0;
-            height: 100%;
-            min-height: 100vh;
-            overflow: hidden;
             overscroll-behavior: none;
             display: flex;
             flex-direction: column;
@@ -176,15 +178,13 @@
 
         .recipes-container {
             flex: 1;
-            display: flex;
-            overflow-x: auto;
-            overflow-y: hidden;
-            scroll-snap-type: x mandatory;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-snap-type: y mandatory;
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
             -ms-overflow-style: none;
             scrollbar-width: none;
-            touch-action: pan-x;
             overscroll-behavior: none;
         }
 
@@ -193,14 +193,13 @@
         }
 
         .recipe-page {
-            flex: 0 0 100vw;
-            width: 100vw;
-            scroll-snap-align: center;
+            min-height: 100%;
+            scroll-snap-align: start;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             align-content: start;
-            padding: 16px 16px 0;
+            padding: 16px 16px 24px;
             box-sizing: border-box;
         }
 
