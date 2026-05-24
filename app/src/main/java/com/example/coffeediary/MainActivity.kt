@@ -2,6 +2,7 @@ package com.example.coffeediary
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -21,10 +22,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.File
 import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
@@ -283,6 +286,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        @android.webkit.JavascriptInterface
+        fun shareImage(base64: String) {
+            runOnUiThread {
+                shareImageToApp(base64)
+            }
+        }
+
     }
 
     private fun saveImageToGallery(base64: String) {
@@ -307,6 +317,35 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
             runOnUiThread {
                 Toast.makeText(this, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun shareImageToApp(base64: String) {
+        try {
+            val bytes = Base64.decode(base64.split(",")[1], Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            val cachePath = File(cacheDir, "images")
+            cachePath.mkdirs()
+            val file = File(cachePath, "CFTI_Weekly_${System.currentTimeMillis()}.png")
+            file.outputStream().use { stream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            }
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                file
+            )
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(shareIntent, "分享咖啡周报"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            runOnUiThread {
+                Toast.makeText(this, "分享失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -936,6 +936,249 @@
             opacity: 1;
             transform: translateX(0);
         }
+
+        /* ==================== 周报卡片 ==================== */
+        .weekly-report-card {
+            background: #FFFFFF;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+        }
+
+        .weekly-report-header {
+            padding: 28px 24px 0;
+        }
+
+        .wr-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #3E2723;
+            letter-spacing: 0.02em;
+        }
+
+        .wr-subtitle {
+            font-size: 12px;
+            color: #9E9E9E;
+            margin-top: 4px;
+        }
+
+        .weekly-report-body {
+            padding: 24px;
+        }
+
+        .wr-kpi-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .wr-kpi {
+            text-align: center;
+            flex: 1;
+        }
+
+        .wr-kpi-num {
+            font-size: 30px;
+            font-weight: 800;
+            color: #3E2723;
+            line-height: 1.1;
+            letter-spacing: -0.01em;
+        }
+
+        .wr-kpi-label {
+            font-size: 11px;
+            color: #9E9E9E;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .wr-divider {
+            height: 1px;
+            background: #F0EBE8;
+            margin: 18px 0;
+        }
+
+        .wr-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .wr-info-key {
+            font-size: 13px;
+            color: #9E9E9E;
+            font-weight: 500;
+        }
+
+        .wr-info-val {
+            font-size: 13px;
+            color: #3E2723;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .weekly-report-footer {
+            padding: 12px 24px 16px;
+            border-top: 1px solid #F5F0EB;
+        }
+
+        .wr-footer-text {
+            text-align: center;
+            font-size: 11px;
+            color: #BCAAA4;
+        }
+
+        .wr-export-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: calc(100% - 40px);
+            margin: 0 20px 20px;
+            padding: 12px 0;
+            background: #3E2723;
+            color: #FFF;
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .wr-export-btn:active {
+            opacity: 0.85;
+        }
+
+        /* --- 板块标题 --- */
+        .wr-section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #8D7B6E;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin: 18px 0 10px;
+        }
+
+        /* --- 每日节奏条 --- */
+        .wr-rhythm {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            height: 54px;
+            padding: 2px 0;
+        }
+        .wr-rhythm-day {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .wr-rhythm-bar-wrap {
+            width: 100%;
+            height: 40px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .wr-rhythm-bar {
+            width: 60%;
+            min-height: 3px;
+            border-radius: 3px;
+            background: #E6DED8;
+            transition: height 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        .wr-rhythm-bar.active {
+            background: #5D4037;
+        }
+        .wr-rhythm-bar.peaked {
+            background: #3E2723;
+        }
+        .wr-rhythm-label {
+            font-size: 10px;
+            color: #BCAAA4;
+            font-weight: 500;
+        }
+        .wr-rhythm-label.active {
+            color: #3E2723;
+            font-weight: 700;
+        }
+
+        /* --- 咖啡分布条 --- */
+        .wr-dist-item {
+            margin-bottom: 8px;
+        }
+        .wr-dist-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 3px;
+        }
+        .wr-dist-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #3E2723;
+        }
+        .wr-dist-count {
+            font-size: 11px;
+            color: #9E9E9E;
+            font-weight: 600;
+        }
+        .wr-dist-track {
+            height: 5px;
+            border-radius: 3px;
+            background: #F0EBE8;
+            overflow: hidden;
+        }
+        .wr-dist-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: #5D4037;
+            transition: width 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        .wr-dist-fill.second { background: #8D6E63; }
+        .wr-dist-fill.third  { background: #A1887F; }
+        .wr-dist-fill.rest   { background: #D7CCC8; }
+
+        /* --- 温度×糖度 矩阵 --- */
+        .wr-matrix {
+            display: grid;
+            grid-template-columns: 48px repeat(3, 1fr);
+            gap: 1px;
+            background: #F0EBE8;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .wr-matrix-cell {
+            background: #FFFFFF;
+            text-align: center;
+            padding: 8px 2px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #3E2723;
+        }
+        .wr-matrix-cell.hd {
+            color: #9E9E9E;
+            font-weight: 500;
+            font-size: 10px;
+        }
+        .wr-matrix-cell.zero {
+            color: #D7CCC8;
+        }
+
+        /* --- 洞察文本 --- */
+        .wr-insight {
+            margin-top: 4px;
+            padding: 14px 16px;
+            background: #FAFAF8;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #5D5348;
+            line-height: 1.8;
+            letter-spacing: 0.01em;
+            white-space: pre-line;
+        }
     </style>
 </head>
 <body>
@@ -1080,6 +1323,58 @@
                     <div class="h-48 mb-4"><canvas id="cftiRadar"></canvas></div>
                     <button onclick="generateShareImage()" class="w-full bg-[#8D6E63] text-white py-3 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-[#8D6E63]/20 transition-all active:scale-95">
                         <i class="fas fa-camera"></i> 生成人格海报
+                    </button>
+                </div>
+            </section>
+
+            <!-- 周报 -->
+            <section id="weeklyReportSection" class="mt-5 stats-stagger" style="transition-delay: 0.52s;">
+                <h2 class="text-xl font-bold mb-4">📰 咖啡周报</h2>
+                <div id="weeklyReportCard" class="weekly-report-card">
+                    <!-- 标题 -->
+                    <div class="weekly-report-header">
+                        <div class="wr-title" id="wrTitle">--</div>
+                        <div class="wr-subtitle" id="wrDateRange">--</div>
+                    </div>
+                    <!-- 核心指标 -->
+                    <div class="weekly-report-body">
+                        <div class="wr-kpi-row">
+                            <div class="wr-kpi">
+                                <div class="wr-kpi-num" id="wrTotal">0</div>
+                                <div class="wr-kpi-label">杯 数</div>
+                            </div>
+                            <div class="wr-kpi">
+                                <div class="wr-kpi-num" id="wrDays">0</div>
+                                <div class="wr-kpi-label">天 数</div>
+                            </div>
+                            <div class="wr-kpi">
+                                <div class="wr-kpi-num" id="wrAvg">0</div>
+                                <div class="wr-kpi-label">日 均</div>
+                            </div>
+                        </div>
+
+                        <!-- 每日节奏 -->
+                        <div class="wr-section-label">每日节奏</div>
+                        <div class="wr-rhythm" id="wrRhythm"></div>
+
+                        <!-- 咖啡分布 -->
+                        <div class="wr-section-label" id="wrDistLabel">品类分布</div>
+                        <div class="wr-dist" id="wrDistribution"></div>
+
+                        <!-- 风味矩阵 -->
+                        <div class="wr-section-label">风味矩阵</div>
+                        <div class="wr-matrix" id="wrMatrix"></div>
+
+                        <!-- 洞察文本 -->
+                        <div class="wr-insight" id="wrInsight"></div>
+                    </div>
+                    <!-- 底部 -->
+                    <div class="weekly-report-footer">
+                        <div class="wr-footer-text" id="wrFooter">CFTI · --</div>
+                    </div>
+                    <!-- 导出按钮 -->
+                    <button onclick="exportWeeklyReport()" class="wr-export-btn">
+                        <i class="fas fa-share-alt"></i> 导出分享
                     </button>
                 </div>
             </section>

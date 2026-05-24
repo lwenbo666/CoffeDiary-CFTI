@@ -1426,6 +1426,7 @@
         updateStatsMetrics(records);
         updatePreferenceList(records);
         updateCharts(records);
+        renderWeeklyReport(records);
     }
 
     // 更新关键指标
@@ -1783,11 +1784,11 @@
         btn.style.display = 'none';
 
         html2canvas(card, {
-            scale: 1.5,
+            scale: 4.0,
             useCORS: true,
             backgroundColor: '#FFFFFF'
         }).then(canvas => {
-            const imgData = canvas.toDataURL('image/jpeg', 0.85);
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
             if (window.AndroidBridge) {
                 window.AndroidBridge.saveImage(imgData);
             } else {
@@ -1797,6 +1798,317 @@
                 link.href = imgData;
                 link.click();
             }
+            btn.style.display = 'flex';
+        });
+    }
+
+    // ==================== 周报 — 规则引擎 NLG ====================
+    function pick(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    // 过去几周的对应用作对比
+    function getLastWeekRecords(monday, sunday) {
+        const lastMonday = new Date(monday);
+        lastMonday.setDate(lastMonday.getDate() - 7);
+        const lastSunday = new Date(monday);
+        lastSunday.setDate(lastSunday.getDate() - 1);
+        return coffeeRecords.filter(r => {
+            const d = new Date(r.date);
+            d.setHours(0,0,0,0);
+            return d >= lastMonday && d <= lastSunday;
+        });
+    }
+
+    function generateInsight(ctx) {
+        const { total, uniqueDays, variety, nameSorted, tempCounts, sugarCounts, records, lastWeek } = ctx;
+        const paragraphs = [];
+
+        // ─── 段落1：本周总览 ───
+        const favTop = nameSorted[0];
+        const favPct = Math.round((favTop[1] / total) * 100);
+        const openers = [
+            `这周，你在 ${uniqueDays} 天里一共拥抱了 ${total} 杯咖啡。`,
+            `${total} 杯咖啡、${uniqueDays} 个日子——这是属于你的一周。`,
+            `从周一到周日，${total} 杯咖啡串联起 ${uniqueDays} 天。`,
+            `一周的记录逐渐厚实起来：${total} 杯、${uniqueDays} 天。`,
+        ];
+        let p1 = pick(openers);
+
+        if (variety > 1) {
+            const c1 = [`「${favTop[0]}」以 ${favPct}% 的占比稳居 C 位`];
+            const c2 = [`，几乎占据了咖啡日常的半壁江山`];
+            const c3 = [`——当之无愧的本周关键词`];
+            p1 += pick(favPct >= 55 ? [...c1, ...c2] : c1) + pick(favPct >= 45 ? c3 : [`，不过种类多样的组合也值得回味`]);
+        } else {
+            p1 += ` 专情于「${favTop[0]}」，一心一意也是一种优雅。`;
+        }
+        paragraphs.push(p1);
+
+        // ─── 段落2：品类分析 ───
+        if (variety >= 5) {
+            const rest = nameSorted.slice(1, 4).map(([n]) => `「${n}」`).join('、');
+            paragraphs.push(`${variety} 种咖啡轮番登场，除了主咖还涉猎了 ${rest} 等，探索精神可嘉。`);
+        } else if (variety === 4 || variety === 3) {
+            const others = nameSorted.slice(1).map(([n,c]) => `「${n}」${c}杯`).join('、');
+            paragraphs.push(`本周品尝了 ${variety} 种风味，搭配阵容为 ${others}。`);
+        } else if (variety === 2) {
+            const other = nameSorted[1];
+            paragraphs.push(`简简单单两种风味——「${favTop[0]}」与「${other[0]}」，交替中自有节奏。`);
+        }
+
+        // ─── 段落3：品味画像（温度×糖度） ───
+        const tempEntry = Object.entries(tempCounts).filter(([,c]) => c > 0).sort((a,b)=>b[1]-a[1]);
+        const sugarEntry = Object.entries(sugarCounts).filter(([,c]) => c > 0).sort((a,b)=>b[1]-a[1]);
+        if (tempEntry.length >= 1 && sugarEntry.length >= 1) {
+            const tMap = { hot: '热', ice: '冰', warm: '温' };
+            const sMap = { none: '无糖', half: '半糖', full: '全糖' };
+            const tTop = tempEntry[0];
+            const sTop = sugarEntry[0];
+            const tPct = Math.round((tTop[1] / total) * 100);
+            const sPct = Math.round((sTop[1] / total) * 100);
+
+            let p3 = '';
+            if (tPct >= 80 && sPct >= 80) {
+                p3 = `口味画像非常清晰：${tMap[tTop[0]]}饮 × ${sMap[sTop[0]]}，风格统一而鲜明。`;
+            } else if (tPct >= 70 && sPct >= 70) {
+                p3 = `偏好明显偏${tMap[tTop[0]]}（${tPct}%）、${sMap[sTop[0]]}（${sPct}%），主调突出，偶有调剂。`;
+            } else {
+                const tDesc = `${tMap[tTop[0]]}饮 ${tPct}%`;
+                const sDesc = tempEntry.length >= 2 ? `、${tMap[tempEntry[1][0]]}饮 ${Math.round((tempEntry[1][1]/total)*100)}% 穿插其间` : '';
+                p3 = `温度层面以 ${tDesc} 为主${sDesc}；甜度上则以 ${sMap[sTop[0]]} ${sPct}% 领先。`;
+            }
+            paragraphs.push(p3);
+        }
+
+        // ─── 段落4：节奏规律 ───
+        const dayCounts = {};
+        const dayNames = ['周一','周二','周三','周四','周五','周六','周日'];
+        records.forEach(r => {
+            const d = new Date(r.date);
+            const idx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+            dayCounts[idx] = (dayCounts[idx] || 0) + 1;
+        });
+        const peak = Object.entries(dayCounts).sort((a,b)=>b[1]-a[1])[0];
+        const workday = [0,1,2,3,4].reduce((s,i)=>s+(dayCounts[i]||0),0);
+        const weekend = [5,6].reduce((s,i)=>s+(dayCounts[i]||0),0);
+
+        if (peak && peak[1] >= 2) {
+            const peakDay = dayNames[parseInt(peak[0])];
+            const p4s = [];
+            if (workday > weekend * 1.5 && uniqueDays >= 3) {
+                p4s.push(`${peakDay}咖啡浓度最高（${peak[1]} 杯），工作日对咖啡的依赖明显强于周末`);
+            } else if (weekend >= workday * 1.3 && weekend >= 2) {
+                p4s.push(`周末咖啡频次不减反增，${peakDay}达到 ${peak[1]} 杯——咖啡俨然是假日的松弛良伴`);
+            } else {
+                p4s.push(`${peakDay}是本周期最密集的一天（${peak[1]} 杯），节奏随着工作日均匀铺开`);
+            }
+            paragraphs.push(pick(p4s));
+        } else if (uniqueDays >= 3) {
+            paragraphs.push('每日杯数均匀分布，咖啡习惯已经融入日常节奏。');
+        }
+
+        // ─── 段落5：与上周对比 ───
+        if (lastWeek && lastWeek.length > 0) {
+            const lwTotal = lastWeek.length;
+            const diff = total - lwTotal;
+            if (diff > 0) {
+                const tpls = [
+                    `较上周 +${diff} 杯，咖啡热情正在升温`,
+                    `比上周多了 ${diff} 杯，也许这一周格外需要提神`,
+                    `对比上周 ↑${diff} 杯，可见咖啡在你的生活里愈发重要`,
+                ];
+                paragraphs.push(pick(tpls) + '。');
+            } else if (diff < 0) {
+                paragraphs.push(`比上周少了 ${Math.abs(diff)} 杯，节奏放缓，也许睡得更好了一点。`);
+            } else {
+                paragraphs.push('与上周杯数持平——你的咖啡节奏已经找到了舒适的频率。');
+            }
+        }
+
+        // ─── 收束 ───
+        const closers = [
+            '每一杯，都是你与时间的一场小小仪式。',
+            '下一周，期待新鲜风味的光临。',
+            '愿你手边的那杯，永远温热，永远适口。',
+            '咖啡日记里，每一天都值得被记住。',
+            '喝咖啡这件事，你从不将就。',
+            '保持热爱，继续向前。',
+        ];
+        paragraphs.push(pick(closers));
+
+        return paragraphs.join('\n\n');
+    }
+
+    // ==================== 周报 — 渲染 ====================
+    function renderWeeklyReport(records) {
+        const card = document.getElementById('weeklyReportCard');
+        if (!card) return;
+
+        const now = new Date();
+        const dayOfWeek = now.getDay() || 7;
+        const monday = new Date(now);
+        monday.setHours(0,0,0,0);
+        monday.setDate(now.getDate() - dayOfWeek + 1);
+        const sunday = new Date(monday);
+        sunday.setDate(sunday.getDate() + 6);
+        const mondayStr = `${monday.getMonth()+1}/${monday.getDate()}`;
+        const todayStr = `${now.getMonth()+1}/${now.getDate()}`;
+        const jan1 = new Date(now.getFullYear(), 0, 1);
+        const daysSinceJan1 = Math.floor((now - jan1) / 86400000);
+        const weekNum = Math.ceil((daysSinceJan1 + jan1.getDay() + 1) / 7);
+
+        document.getElementById('wrTitle').textContent =
+            `${now.getFullYear()}年 · 第 ${weekNum} 周`;
+        document.getElementById('wrDateRange').textContent = `${mondayStr} — ${todayStr}`;
+        document.getElementById('wrFooter').textContent =
+            `CFTI · ${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+        // --- 空状态 ---
+        const noData = records.length === 0;
+        ['wrTotal','wrDays','wrAvg'].forEach(id => document.getElementById(id).textContent = '0');
+        ['wrRhythm','wrDistribution','wrMatrix','wrInsight','wrDistLabel'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = '';
+        });
+        if (noData) {
+            const ins = document.getElementById('wrInsight');
+            if (ins) ins.textContent = '本周还没有记录，快去喝杯咖啡吧 ☕';
+            return;
+        }
+
+        // --- 核心指标 ---
+        const total = records.length;
+        const uniqueDays = new Set(records.map(r => r.date)).size;
+        const avg = uniqueDays > 0 ? (total / uniqueDays).toFixed(1) : '0';
+        document.getElementById('wrTotal').textContent = total;
+        document.getElementById('wrDays').textContent = uniqueDays;
+        document.getElementById('wrAvg').textContent = avg;
+
+        // --- 咖啡统计 ---
+        const nameCounts = {};
+        records.forEach(r => { nameCounts[r.name] = (nameCounts[r.name] || 0) + 1; });
+        const nameSorted = Object.entries(nameCounts).sort((a,b) => b[1]-a[1]);
+        const variety = Object.keys(nameCounts).length;
+
+        const tempCounts = { hot: 0, ice: 0, warm: 0 };
+        const sugarCounts = { none: 0, half: 0, full: 0 };
+        records.forEach(r => {
+            if (tempCounts.hasOwnProperty(r.temp)) tempCounts[r.temp]++;
+            if (sugarCounts.hasOwnProperty(r.sugar)) sugarCounts[r.sugar]++;
+        });
+
+        // ===== 每日节奏 =====
+        const dayCounts = [0,0,0,0,0,0,0]; // Mon-Sun
+        records.forEach(r => {
+            const d = new Date(r.date);
+            const idx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+            dayCounts[idx]++;
+        });
+        const maxDay = Math.max(...dayCounts, 1);
+        const dayNames = ['一','二','三','四','五','六','日'];
+        const rhythmEl = document.getElementById('wrRhythm');
+        rhythmEl.innerHTML = dayCounts.map((c, i) => {
+            const h = Math.max(3, Math.round((c / maxDay) * 36));
+            let barClass = 'wr-rhythm-bar';
+            if (c > 0 && c === maxDay) barClass += ' peaked';
+            else if (c > 0) barClass += ' active';
+            let lblClass = 'wr-rhythm-label';
+            if (c > 0 && c === maxDay) lblClass += ' active';
+            return `<div class="wr-rhythm-day">
+                <div class="wr-rhythm-bar-wrap"><div class="${barClass}" style="height:${h}px"></div></div>
+                <div class="${lblClass}">${c || ''}</div>
+                <div class="wr-rhythm-label">${dayNames[i]}</div>
+            </div>`;
+        }).join('');
+
+        // ===== 咖啡分布 =====
+        const distEl = document.getElementById('wrDistribution');
+        const distLabelEl = document.getElementById('wrDistLabel');
+        if (variety >= 2) {
+            distLabelEl.style.display = '';
+            const barColors = ['wr-dist-fill', 'wr-dist-fill second', 'wr-dist-fill third', 'wr-dist-fill rest'];
+            const topN = nameSorted.slice(0, 6);
+            const restCount = nameSorted.slice(6).reduce((s,[,c]) => s + c, 0);
+            const display = [...topN];
+            if (restCount > 0) display.push(['其他', restCount]);
+
+            distEl.innerHTML = display.map(([name, count], i) => {
+                const pct = Math.round((count / total) * 100);
+                const colorCls = barColors[Math.min(i, barColors.length - 1)];
+                return `<div class="wr-dist-item">
+                    <div class="wr-dist-head">
+                        <span class="wr-dist-name">${name}</span>
+                        <span class="wr-dist-count">${count}杯 · ${pct}%</span>
+                    </div>
+                    <div class="wr-dist-track"><div class="${colorCls}" style="width:${pct}%"></div></div>
+                </div>`;
+            }).join('');
+        } else {
+            distLabelEl.style.display = 'none';
+            distEl.innerHTML = '';
+        }
+
+        // ===== 风味矩阵 =====
+        const tKeys = ['ice','warm','hot'];
+        const sKeys = ['none','half','full'];
+        const tLabels = { ice:'冰', warm:'温', hot:'热' };
+        const sLabels = { none:'无糖', half:'半糖', full:'全糖' };
+
+        const matrix = {};
+        records.forEach(r => {
+            const k = `${r.temp}|${r.sugar}`;
+            matrix[k] = (matrix[k] || 0) + 1;
+        });
+
+        const matrixEl = document.getElementById('wrMatrix');
+        matrixEl.innerHTML = [
+            '<div class="wr-matrix-cell hd"></div>',
+            ...sKeys.map(sk => `<div class="wr-matrix-cell hd">${sLabels[sk]}</div>`),
+            ...tKeys.map(tk =>
+                `<div class="wr-matrix-cell hd">${tLabels[tk]}</div>` +
+                sKeys.map(sk => {
+                    const v = matrix[`${tk}|${sk}`] || 0;
+                    return `<div class="wr-matrix-cell${v===0?' zero':''}">${v || '-'}</div>`;
+                }).join('')
+            ),
+        ].join('');
+
+        // ===== 洞察文本 =====
+        const lastWeek = getLastWeekRecords(monday, sunday);
+        const insightEl = document.getElementById('wrInsight');
+        if (insightEl) {
+            insightEl.textContent = generateInsight({
+                total, uniqueDays, variety,
+                nameSorted, tempCounts, sugarCounts,
+                records, lastWeek,
+            });
+        }
+    }
+
+    function exportWeeklyReport() {
+        const card = document.getElementById('weeklyReportCard');
+        const btn = card.querySelector('.wr-export-btn');
+        btn.style.display = 'none';
+
+        html2canvas(card, {
+            scale: 4.0,
+            useCORS: true,
+            backgroundColor: '#FFFFFF'
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            if (window.AndroidBridge && window.AndroidBridge.shareImage) {
+                window.AndroidBridge.shareImage(imgData);
+            } else if (window.AndroidBridge) {
+                window.AndroidBridge.saveImage(imgData);
+            } else {
+                const link = document.createElement('a');
+                link.download = 'CFTI_Weekly_' + new Date().getTime() + '.png';
+                link.href = imgData;
+                link.click();
+            }
+            btn.style.display = 'flex';
+        }).catch(() => {
             btn.style.display = 'flex';
         });
     }
