@@ -265,6 +265,13 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* 七日视图：格子紧凑，标签贴得更近 */
+        .calendar-grid.week-view .name-tag {
+            bottom: -5px;
+            padding: 4px 8px;
+            font-size: 9px;
+        }
+
         /* ==================== 删除按钮 ==================== */
         .delete-btn {
             display: none;
@@ -597,6 +604,41 @@
         .delete-record-btn:hover {
             background: rgba(239, 68, 68, 0.2);
             transform: scale(1.1);
+        }
+
+        /* ==================== 内联编辑名称 ==================== */
+        .record-name-text {
+            display: inline;
+        }
+
+        .record-name-input {
+            display: none;
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: bold;
+            color: var(--text-primary);
+            background: rgba(141, 110, 99, 0.06);
+            border: 1.5px solid rgba(141, 110, 99, 0.3);
+            border-radius: 8px;
+            padding: 2px 8px;
+            min-width: 80px;
+            max-width: 160px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .record-name-input:focus {
+            border-color: #8D6E63;
+            background: rgba(141, 110, 99, 0.1);
+        }
+
+        .name-edit-group .fa-pencil-alt {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .coffee-record-item:hover .name-edit-group .fa-pencil-alt {
+            opacity: 1;
         }
 
         /* ==================== 空状态提示 ==================== */

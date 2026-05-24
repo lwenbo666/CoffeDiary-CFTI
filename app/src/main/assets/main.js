@@ -745,12 +745,20 @@
         }
 
         container.innerHTML = coffeeRecords.map((record) => `
-            <div class="coffee-record-item" onclick="this.classList.toggle('delete-visible')">
+            <div class="coffee-record-item" onclick="if(!event.target.closest('.name-edit-group') && !event.target.closest('.delete-record-btn') && !event.target.closest('img'))this.classList.toggle('delete-visible')">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1">
                         <img src="${record.photo}" class="coffee-sticker mr-3" alt="${record.name}" onclick="openStickerExpand(this,'${record.name.replace(/'/g, "\\'")}');event.stopPropagation()">
                         <div>
-                            <div class="font-bold">${record.name}</div>
+                            <div class="font-bold flex items-center gap-1 name-edit-group">
+                                <span class="record-name-text">${record.name}</span>
+                                <input class="record-name-input" type="text" value="${record.name.replace(/"/g, '&quot;')}" maxlength="20"
+                                    onblur="finishEditRecordName(this,${record.id})"
+                                    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape')cancelEditRecordName(this,${record.id})"
+                                    style="display:none">
+                                <i class="fas fa-pencil-alt text-xs text-gray-400 hover:text-[#8D6E63]"
+                                    onclick="startEditRecordName(this);event.stopPropagation()" style="cursor:pointer"></i>
+                            </div>
                             <div class="text-xs text-gray-500">${record.date} · ${getTempLabel(record.temp)} · ${getSugarLabel(record.sugar)}</div>
                         </div>
                     </div>
@@ -760,6 +768,60 @@
                 </div>
             </div>
         `).join('');
+    }
+
+    // ==================== 内联编辑咖啡名称 ====================
+    function startEditRecordName(icon) {
+        const group = icon.closest('.name-edit-group');
+        const textSpan = group.querySelector('.record-name-text');
+        const input = group.querySelector('.record-name-input');
+        textSpan.style.display = 'none';
+        icon.style.display = 'none';
+        input.style.display = 'block';
+        input.focus();
+        input.select();
+    }
+
+    function finishEditRecordName(input, id) {
+        const group = input.closest('.name-edit-group');
+        const newName = input.value.trim();
+        // 恢复 UI 状态（避免 updateAllRecords 重绘前看到残留输入框）
+        const textSpan = group.querySelector('.record-name-text');
+        const icon = group.querySelector('.fa-pencil-alt');
+        if (textSpan) textSpan.style.display = '';
+        if (icon) icon.style.display = '';
+        input.style.display = 'none';
+
+        if (!newName || newName === (textSpan ? textSpan.textContent : '')) {
+            // 空名称或未修改，恢复原值后不做任何事
+            if (!newName && textSpan) input.value = textSpan.textContent;
+            return;
+        }
+        updateCoffeeRecordName(id, newName);
+    }
+
+    function cancelEditRecordName(input, id) {
+        const group = input.closest('.name-edit-group');
+        const textSpan = group.querySelector('.record-name-text');
+        const icon = group.querySelector('.fa-pencil-alt');
+        input.value = textSpan ? textSpan.textContent : '';
+        if (textSpan) textSpan.style.display = '';
+        if (icon) icon.style.display = '';
+        input.style.display = 'none';
+        input.blur();
+    }
+
+    function updateCoffeeRecordName(id, newName) {
+        // 更新原生数据库
+        if (window.AndroidBridge && window.AndroidBridge.updateRecordName) {
+            window.AndroidBridge.updateRecordName(id, newName);
+        }
+        // 更新本地数组
+        const record = coffeeRecords.find(r => r.id === id);
+        if (record) {
+            record.name = newName;
+        }
+        _scheduleUIUpdate();
     }
 
     // ==================== CFTI 人格计算（MBTI风格：4维二元对立）====================

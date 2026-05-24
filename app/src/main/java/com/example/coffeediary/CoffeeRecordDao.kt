@@ -20,6 +20,9 @@ interface CoffeeRecordDao {
     @Query("DELETE FROM coffee_records WHERE name = :name")
     suspend fun deleteRecordsByName(name: String)
 
+    @Query("UPDATE coffee_records SET name = :newName WHERE id = :id")
+    suspend fun updateRecordName(id: Long, newName: String)
+
     @Query("SELECT COUNT(*) FROM coffee_records")
     suspend fun getCount(): Int
 }

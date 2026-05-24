@@ -241,6 +241,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         @android.webkit.JavascriptInterface
+        fun updateRecordName(id: Long, newName: String) {
+            runBlocking { db.coffeeRecordDao().updateRecordName(id, newName) }
+        }
+
+        @android.webkit.JavascriptInterface
         fun deleteRecordsByName(name: String) {
             runBlocking { db.coffeeRecordDao().deleteRecordsByName(name) }
         }
